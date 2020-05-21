@@ -1,0 +1,27 @@
+{
+  listenOn: 8081,
+
+  connection: {
+    host: "postgres",
+    port: 5432,
+    user: "manydecks",
+    database: "manydecks",
+    password: "manydecks",
+    keepAlive: false,
+  },
+
+  auth: {
+    local: {
+      issuer: "",
+      secret: "CHANGE ME",
+      algorithm: "HS256",
+      historicAlgorithms: [],
+      expiresIn: "3h",
+    },
+
+    google: {
+      id: "CHANGE ME",
+      secret: "CHANGE ME",
+    },
+  },
+}

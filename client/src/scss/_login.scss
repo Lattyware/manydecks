@@ -1,0 +1,95 @@
+.log-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-width: 18em;
+  max-width: 30em;
+  margin: 3em;
+
+  position: relative;
+
+  h1 {
+    margin: 0.5em;
+
+    > svg {
+      margin-right: 0.25em;
+    }
+  }
+
+  p {
+    margin: 0.5em;
+  }
+
+  .version {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-right: -1em;
+    margin-top: -1.5em;
+
+    width: 3em;
+    height: 3em;
+
+    background-color: #d81b60;
+    color: #ffffff;
+
+    border-radius: 1.5em;
+
+    font-size: 1.5em;
+
+    transform: rotateZ(10deg);
+
+    box-shadow: 0.15em 0.15em 0.4em transparentize(#000000, 0.7),
+      -0.05em -0.05em 0.4em transparentize(#000000, 0.7);
+
+    transition: box-shadow 0.5s, margin-top 0.5s;
+
+    &:hover {
+      margin-top: -2em;
+      box-shadow: 0.3em 0.3em 0.4em transparentize(#000000, 0.7),
+        -0.05em -0.05em 0.4em transparentize(#000000, 0.7);
+    }
+  }
+}
+
+#google-sign-in mwc-button {
+  --mdc-theme-primary: #4285f4;
+  --mdc-theme-on-primary: #ffffff;
+  --mdc-button-horizontal-padding: 0.5em;
+  --mdc-shape-small: 0;
+  margin: 0.5em;
+
+  > span {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    margin-left: 1em;
+  }
+
+  .google-icon {
+    background-image: url("../../assets/images/google/normal.svg");
+    background-size: 100% 100%;
+    width: 2em;
+    height: 2em;
+    margin: 0 0.5em 0 -1em;
+    position: absolute;
+  }
+
+  &:disabled .google-icon {
+    background-image: url("../../assets/images/google/disabled.svg");
+  }
+
+  &:focus .google-icon {
+    background-image: url("../../assets/images/google/focus.svg");
+  }
+
+  &:active .google-icon {
+    background-image: url("../../assets/images/google/pressed.svg");
+  }
+}

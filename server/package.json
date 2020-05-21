@@ -1,0 +1,70 @@
+{
+  "name": "@manydecks/server",
+  "version": "1.0.0",
+  "author": "Reread Games <team@rereadgames.com>",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "description": "A place to make and share custom decks for Massive Decks.",
+  "repository": "github:Lattyware/manydecks",
+  "engines": {
+    "node": "13.x.x"
+  },
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "build": "npx tsc",
+    "prestart": "npm run build",
+    "start": "node --es-module-specifier-resolution=node dist/index.js",
+    "dev": "nodemon",
+    "debug": "nodemon --inspect",
+    "build-image": "docker build . -t \"manydecks/server\" --build-arg BUILD_DATE=\"$(date --rfc-3339=seconds)\""
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-async-errors": "^3.1.1",
+    "express-easy-zip": "^1.1.5",
+    "express-winston": "^4.0.3",
+    "fast-json-patch": "^3.0.0-1",
+    "fp-ts": "^2.6.1",
+    "google-auth-library": "^6.0.0",
+    "hashids": "^2.2.1",
+    "helmet": "^3.22.0",
+    "http-status-codes": "^1.4.0",
+    "io-ts": "^2.2.2",
+    "json5": "^2.1.3",
+    "jsonwebtoken": "^8.5.1",
+    "node-pg-migrate": "^4.8.0",
+    "pg": "^8.2.1",
+    "postgres-migrations": "^4.0.3",
+    "source-map-support": "^0.5.19",
+    "uuid": "^8.0.0",
+    "winston": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.6",
+    "@types/express-winston": "^4.0.0",
+    "@types/fast-json-patch": "^1.1.5",
+    "@types/hashids": "^1.0.30",
+    "@types/helmet": "0.0.47",
+    "@types/json5": "0.0.30",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/pg": "^7.14.3",
+    "@types/source-map-support": "^0.5.1",
+    "@types/uuid": "^7.0.3",
+    "@typescript-eslint/eslint-plugin": "^2.33.0",
+    "@typescript-eslint/parser": "^2.33.0",
+    "eslint": "^7.0.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.3",
+    "nodemon": "^2.0.4",
+    "prettier": "^2.0.5",
+    "typescript": "^3.9.2"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src/"
+    ],
+    "ext": "ts,sql",
+    "exec": "npm run start"
+  }
+}

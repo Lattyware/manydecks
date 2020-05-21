@@ -1,0 +1,90 @@
+@use "../../elm-material/src/scss/_material";
+
+@use "./_edit";
+@use "./_profile";
+@use "./_decks";
+@use "./_login";
+@use "./cards/_card";
+
+:root {
+  font-size: 1.2em;
+
+  --mdc-theme-primary: #00796b;
+  --mdc-theme-secondary: #d81b60;
+}
+
+body {
+  margin: 0;
+
+  min-height: 100vh;
+  min-width: 100vw;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  align-items: stretch;
+
+  background-color: #212121;
+
+  font-family: "Helvetica Neue", "Nimbus Sans L", sans-serif;
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.deck-code {
+  font-family: monospace;
+  background-color: #00796b;
+  color: #ffffff;
+  padding: 0.5em;
+  letter-spacing: 0.2em;
+  border: none;
+  flex-basis: 5em;
+  min-width: 5em;
+  text-align: center;
+  font-weight: bold;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#sign-out {
+  margin: 1em;
+}
+
+#view-profile {
+  margin: 1em;
+}
+
+mwc-button {
+  align-self: flex-end;
+}
+
+.core-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  background-color: transparentize(#ff0000, 0.7);
+
+  font-size: 3em;
+
+  z-index: 999;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .mdc-card {
+    margin: 3em;
+  }
+}

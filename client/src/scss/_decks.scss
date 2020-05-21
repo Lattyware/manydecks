@@ -1,0 +1,70 @@
+.decks {
+  min-width: 18em;
+  max-width: 30em;
+  margin: 3em;
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+
+    list-style: none;
+    padding: 0;
+
+    .deck {
+      margin: 0.5em;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+
+      .deck-code {
+        margin-right: 1em;
+        cursor: copy;
+      }
+
+      .details {
+        display: flex;
+        flex-grow: 1;
+        flex-direction: column;
+        overflow: hidden;
+
+        cursor: pointer;
+
+        &:hover {
+          background-color: #cccccc;
+        }
+
+        .name {
+          flex-shrink: 1;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          min-width: 1em;
+        }
+      }
+
+      .cards {
+        display: flex;
+        flex-direction: column;
+        margin-left: 1em;
+
+        .calls {
+          background-color: #000000;
+          color: #ffffff;
+        }
+
+        .calls,
+        .responses {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.1em;
+        }
+      }
+    }
+  }
+}

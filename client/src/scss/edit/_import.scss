@@ -1,0 +1,12 @@
+.import {
+  flex-grow: 1;
+
+  align-items: stretch;
+
+  margin: 3em;
+
+  textarea {
+    flex-grow: 1;
+    height: 20em;
+  }
+}

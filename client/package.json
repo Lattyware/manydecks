@@ -1,0 +1,60 @@
+{
+  "name": "@manydecks/client",
+  "version": "1.0.0",
+  "description": "The web client to make and share custom decks for Massive Decks.",
+  "scripts": {
+    "dev": "npx webpack-dev-server --mode=development --port 8082",
+    "build": "npx webpack --mode=production",
+    "build-image": "docker build . -t \"manydecks/client\" --build-arg BUILD_DATE=\"$(date --rfc-3339=seconds)\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lattyware/manydecks.git"
+  },
+  "author": "Reread Games <team@rereadgames.com>",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/Lattyware/manydecks/issues"
+  },
+  "homepage": "https://github.com/Lattyware/manydecks#readme",
+  "dependencies": {
+    "@material/card": "^6.0.0",
+    "@material/mwc-button": "^0.15.0",
+    "@material/mwc-fab": "^0.15.0",
+    "@material/mwc-icon-button": "^0.15.0",
+    "@material/mwc-linear-progress": "^0.15.0",
+    "@material/mwc-list": "^0.15.0",
+    "@material/mwc-menu": "^0.15.0",
+    "@material/mwc-select": "^0.15.0",
+    "@material/mwc-slider": "^0.15.0",
+    "@material/mwc-switch": "^0.15.0",
+    "@material/mwc-tab": "^0.15.0",
+    "@material/mwc-tab-bar": "^0.15.0",
+    "@material/mwc-textarea": "^0.15.0",
+    "@material/mwc-textfield": "^0.15.0",
+    "@webcomponents/webcomponentsjs": "^2.4.3",
+    "json5": "^2.1.3"
+  },
+  "devDependencies": {
+    "@types/gapi": "0.0.39",
+    "@types/gapi.auth2": "0.0.52",
+    "@types/json5": "0.0.30",
+    "css-loader": "^3.5.3",
+    "elm": "^0.19.1-3",
+    "elm-webpack-loader": "^6.0.1",
+    "extract-loader": "^5.0.1",
+    "file-loader": "^6.0.0",
+    "html-loader": "^1.1.0",
+    "html-webpack-plugin": "^4.3.0",
+    "prettier": "^2.0.5",
+    "prettier-plugin-elm": "^0.7.0",
+    "resolve-url-loader": "^3.1.1",
+    "sass": "^1.26.5",
+    "sass-loader": "^8.0.2",
+    "ts-loader": "^7.0.4",
+    "typescript": "^3.9.2",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.11.0"
+  }
+}

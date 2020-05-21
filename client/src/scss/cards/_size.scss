@@ -1,0 +1,25 @@
+$card-width: 18em;
+
+$full-size: (5 / 7);
+$square: 1;
+
+@mixin pad-to-aspect-ratio($ratio) {
+  padding-bottom: #{calc(1 / #{$ratio} * 100%)};
+}
+
+@function strip-unit($value) {
+  @return $value / ($value * 0 + 1);
+}
+
+@mixin fluid-type($min-vw, $max-vw, $min-font-size, $max-font-size) {
+  font-size: $min-font-size;
+  @media screen and (min-width: $min-vw) {
+    font-size: calc(
+      #{$min-font-size} + #{strip-unit($max-font-size - $min-font-size)} *
+        ((100vw - #{$min-vw}) / #{strip-unit($max-vw - $min-vw)})
+    );
+  }
+  @media screen and (min-width: $max-vw) {
+    font-size: $max-font-size;
+  }
+}
