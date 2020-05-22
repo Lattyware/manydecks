@@ -23,7 +23,7 @@ export namespace Elm {
   namespace ManyDecks {
     export interface App {
       ports: {
-        tryGoogleAuth: InboundPort<null>;
+        tryGoogleAuth: InboundPort<string>;
         googleAuthResult: OutboundPort<GoogleAuthResult>;
         json5Decode: InboundPort<string>;
         json5Decoded: OutboundPort<object>;

@@ -21,11 +21,11 @@ const main = async () => {
     },
   });
 
-  app.ports.tryGoogleAuth.subscribe((_) => {
+  app.ports.tryGoogleAuth.subscribe((clientId) => {
     if (gapi.auth2 !== undefined) {
       gapi.auth2.authorize(
         {
-          client_id: "CHANGE ME",
+          client_id: clientId,
           scope: "profile openid",
           response_type: "id_token",
         },

@@ -34,7 +34,7 @@ export class Auth {
         issuer,
       }) as Claims;
     } catch (error) {
-      throw new Errors.AuthFailure();
+      throw new Errors.NotAuthenticated();
     }
   }
 }

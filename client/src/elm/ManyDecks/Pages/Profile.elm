@@ -3,76 +3,92 @@ module ManyDecks.Pages.Profile exposing
     , view
     )
 
+import File.Download as File
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
-import Http
-import Json.Encode
+import ManyDecks.Api as Api
 import ManyDecks.Auth as Auth exposing (Auth)
-import ManyDecks.Pages.Profile.Model exposing (..)
+import ManyDecks.Messages as Global
+import ManyDecks.Model exposing (Model, Route(..))
+import ManyDecks.Pages.Profile.Messages exposing (..)
+import ManyDecks.Ports as Ports
+import ManyDecks.Route as Route
 import Material.Button as Button
 import Material.Card as Card
 import Material.Switch as Switch
 import Material.TextField as TextField
 
 
-update : msg -> (Auth -> msg) -> (Msg -> msg) -> String -> Msg -> Model -> ( Model, Cmd msg )
-update signOut updateAuth wrap token msg model =
+update : Msg -> Model -> ( Model, Cmd Global.Msg )
+update msg model =
     case msg of
         SetUsername username ->
-            ( { model | name = username }, Cmd.none )
-
-        SetViewingProfile viewing ->
-            ( { model | viewing = viewing }, Cmd.none )
+            ( { model | usernameField = username }, Cmd.none )
 
         SetDeletionEnabled enabled ->
-            ( { model | deletionEnabled = enabled }, Cmd.none )
+            ( { model | profileDeletionEnabled = enabled }, Cmd.none )
 
         Save newName ->
-            let
-                handle result =
-                    case result of
-                        Ok newAuth ->
-                            updateAuth newAuth
+            case model.auth of
+                Just auth ->
+                    ( model, Api.saveProfile auth.token newName (ProfileUpdated >> Global.ProfileMsg) )
 
-                        Err error ->
-                            Error error |> wrap
-            in
-            ( model, save token newName handle )
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ProfileUpdated auth ->
+            ( { model | auth = Just auth, usernameField = auth.name }, auth |> Just |> Ports.storeAuth )
 
         Delete ->
-            ( model, delete signOut token )
+            case model.auth of
+                Just auth ->
+                    ( model, Api.deleteProfile auth.token (ProfileDeleted |> Global.ProfileMsg |> always) )
 
-        Error error ->
-            ( model, Cmd.none )
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ProfileDeleted ->
+            ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
+
+        Backup ->
+            case model.auth of
+                Just auth ->
+                    ( model, Api.backup auth.token (DownloadBytes >> wrap) )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DownloadBytes bytes ->
+            ( model, File.bytes "backup.zip" "application/zip" bytes )
 
 
-view : (Msg -> msg) -> msg -> Auth -> Model -> List (Html msg)
-view wrap backup auth model =
+view : Model -> List (Html Global.Msg)
+view model =
     [ Card.view [ HtmlA.class "profile" ]
-        [ editSection wrap auth model
-        , backupSection backup
-        , deleteSection wrap model
+        [ editSection model
+        , backupSection
+        , deleteSection model
         ]
     ]
 
 
-editSection : (Msg -> msg) -> Auth -> Model -> Html msg
-editSection wrap auth { name } =
+editSection : Model -> Html Global.Msg
+editSection { auth, usernameField } =
     let
         title =
             Html.h2 [] [ Html.text "Profile" ]
 
         editName =
-            TextField.view "Username" TextField.Text name (SetUsername >> wrap |> Just)
+            TextField.view "Username" TextField.Text usernameField (SetUsername >> wrap |> Just)
 
         description =
             Html.p [] [ Html.text "This name will be displayed publicly as the author of any deck you create." ]
 
         saveAction =
-            if name /= auth.name then
-                name |> Save |> wrap |> Just
+            if Just usernameField /= (auth |> Maybe.map .name) then
+                usernameField |> Save |> wrap |> Just
 
             else
                 Nothing
@@ -83,8 +99,8 @@ editSection wrap auth { name } =
     Html.div [ HtmlA.class "edit section" ] [ title, editName, description, button ]
 
 
-backupSection : msg -> Html msg
-backupSection backup =
+backupSection : Html Global.Msg
+backupSection =
     let
         title =
             Html.h3 [] [ Html.text "Backup" ]
@@ -98,13 +114,13 @@ backupSection backup =
                 Button.Padded
                 "Backup Decks"
                 (Icon.download |> Icon.viewIcon |> Just)
-                (backup |> Just)
+                (Backup |> wrap |> Just)
     in
     Html.div [ HtmlA.class "backup section" ] [ title, description, button ]
 
 
-deleteSection : (Msg -> msg) -> Model -> Html msg
-deleteSection wrap { deletionEnabled } =
+deleteSection : Model -> Html Global.Msg
+deleteSection { profileDeletionEnabled } =
     let
         title =
             Html.h3 [] [ Html.text "Deletion" ]
@@ -123,11 +139,11 @@ deleteSection wrap { deletionEnabled } =
         sureSwitch =
             Switch.view
                 (Html.span [] [ Html.text "I am sure that I want to permanently delete my profile and all my decks." ])
-                deletionEnabled
+                profileDeletionEnabled
                 (SetDeletionEnabled >> wrap |> Just)
 
         deleteAction =
-            if deletionEnabled then
+            if profileDeletionEnabled then
                 Delete |> wrap |> Just
 
             else
@@ -145,28 +161,6 @@ deleteSection wrap { deletionEnabled } =
         [ title, warning, sureSwitch, deleteButton ]
 
 
-save : String -> String -> (Result Http.Error Auth.Auth -> msg) -> Cmd msg
-save token name toMsg =
-    Http.post
-        { url = "/api/users"
-        , body =
-            [ ( "token", token |> Json.Encode.string )
-            , ( "name", name |> Json.Encode.string )
-            ]
-                |> Json.Encode.object
-                |> Http.jsonBody
-        , expect = Http.expectJson toMsg Auth.decoder
-        }
-
-
-delete : msg -> String -> Cmd msg
-delete signOut token =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/api/users"
-        , body = [ ( "token", token |> Json.Encode.string ) ] |> Json.Encode.object |> Http.jsonBody
-        , expect = Http.expectWhatever (always signOut)
-        , timeout = Nothing
-        , tracker = Nothing
-        }
+wrap : Msg -> Global.Msg
+wrap =
+    Global.ProfileMsg

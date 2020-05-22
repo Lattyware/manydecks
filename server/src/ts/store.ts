@@ -76,6 +76,25 @@ export class Store {
       }
     });
 
+  public findOrCreateGuestUser: () => Promise<User.User> = async () =>
+    await this.withClient(async (client) => {
+      const existingResult = await client.query(
+        `SELECT id, name FROM manydecks.users WHERE is_guest;`
+      );
+      if (existingResult.rowCount > 0) {
+        const [user] = existingResult.rows;
+        return { id: user.id, name: user.name };
+      } else {
+        const newId = User.id();
+        const newName = "Guest";
+        await client.query(
+          `INSERT INTO manydecks.users (id, name, is_guest) VALUES ($1, $2, True);`,
+          [newId, newName]
+        );
+        return { id: newId, name: newName };
+      }
+    });
+
   public changeUser: (user: string, name: string) => Promise<void> = async (
     user,
     name
@@ -181,11 +200,9 @@ export class Store {
       }
       const [metaRow] = meta.rows;
       return {
-        details: {
-          name: metaRow.name,
-          author: metaRow.author,
-          language: metaRow.language,
-        },
+        name: metaRow.name,
+        author: metaRow.author,
+        language: metaRow.language,
         calls: metaRow.calls,
         responses: metaRow.responses,
         version: metaRow.version,
@@ -209,11 +226,9 @@ export class Store {
         summaries.push({
           code,
           summary: {
-            details: {
-              name: deck.name,
-              author: deck.author,
-              language: deck.language,
-            },
+            name: deck.name,
+            author: deck.author,
+            language: deck.language,
             calls: deck.calls,
             responses: deck.responses,
             version: deck.version,

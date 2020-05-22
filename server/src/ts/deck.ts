@@ -50,15 +50,10 @@ const Deck = t.intersection([
 ]);
 export type Deck = t.TypeOf<typeof Deck>;
 
-const Details = t.strict({
+const Summary = t.strict({
   name: t.string,
   author: t.string,
   language: t.string,
-});
-export type Details = t.TypeOf<typeof Details>;
-
-const Summary = t.strict({
-  details: Details,
   calls: t.Int,
   responses: t.Int,
   version: t.Int,

@@ -1,18 +1,52 @@
-module ManyDecks.Error exposing (..)
+module ManyDecks.Error exposing
+    ( decode
+    , view
+    )
 
+import FontAwesome.Icon as Icon
+import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
-import Http
 import Json.Decode as Json
+import ManyDecks.Error.Model exposing (..)
+import ManyDecks.Messages exposing (Msg(..))
+import Material.Button as Button
 import Material.Card as Card
 
 
-type Error
-    = Http Http.Error
-    | Json Json.Error
+decode : Json.Decoder Error
+decode =
+    let
+        byName name =
+            case name of
+                "PatchTestFailed" ->
+                    PatchTestFailed |> User |> Json.succeed
+
+                "BadDeck" ->
+                    BadDeck |> Application |> Json.succeed
+
+                "BadPatch" ->
+                    BadPatch |> Application |> Json.succeed
+
+                "DeckNotFound" ->
+                    DeckNotFound |> User |> Json.succeed
+
+                "AuthFailure" ->
+                    AuthFailure |> Transient |> Json.succeed
+
+                "InternalServerError" ->
+                    ServerError |> Application |> Json.succeed
+
+                "NotAuthenticated" ->
+                    NotAuthenticated |> User |> Json.succeed
+
+                _ ->
+                    Json.fail ("Unrecognised error: " ++ name)
+    in
+    Json.field "error" Json.string |> Json.andThen byName
 
 
-view : Maybe Error -> Html msg
+view : Maybe Error -> Html Msg
 view error =
     case error of
         Just e ->
@@ -20,6 +54,7 @@ view error =
                 [ Card.view []
                     [ Html.p [] [ Html.text "Sorry, there appears to have been a problem, please try refreshing the page." ]
                     , Html.p [] [ e |> message |> Html.text ]
+                    , Button.view Button.Standard Button.Padded "Dismiss" (Icon.times |> Icon.viewIcon |> Just) (ClearError |> Just)
                     ]
                 ]
 
@@ -30,32 +65,41 @@ view error =
 message : Error -> String
 message error =
     case error of
-        Http e ->
-            case e of
-                Http.BadUrl url ->
-                    "Application bug: Tried to access “" ++ url ++ "” which isn't a valid URL."
+        Application ae ->
+            case ae of
+                InvalidUrl url ->
+                    "Tried to access “" ++ url ++ "” which isn't a valid URL."
 
-                Http.Timeout ->
-                    "Timed out trying to connect to the server, it is probably down. Try again after a short delay."
+                BadResponse e ->
+                    "Unable to decode the response from the server: " ++ (e |> Json.errorToString)
 
-                Http.NetworkError ->
+                BadPatch ->
+                    "The patch was invalid or produced invalid data."
+
+                BadDeck ->
+                    "The deck was invalid."
+
+                ServerError ->
+                    "The server encountered an error."
+
+        Transient te ->
+            case te of
+                ServerDown ->
+                    "The server appears to be down."
+
+                NetworkError ->
                     "Could not connect to the server. Please check your internet connection and try again."
 
-                Http.BadStatus status ->
-                    if status == 504 || status == 502 then
-                        "The server appears to be down. Try again after a short delay."
+                AuthFailure ->
+                    "Could not authenticate you. There may be an issue with the provider, please try again."
 
-                    else if status >= 400 && status < 500 then
-                        "The server rejected that, please check for problems."
+        User ue ->
+            case ue of
+                DeckNotFound ->
+                    "The deck you tried to access wasn't found."
 
-                    else if status >= 500 && status < 600 then
-                        "There was a problem with the server."
+                PatchTestFailed ->
+                    "The change you tried to make failed because the deck had already changed, and you might overwrite changes. Please check you aren't editing from two places at once."
 
-                    else
-                        "The server returned an expected response."
-
-                Http.BadBody description ->
-                    "We got a response we didn't expect from the server: " ++ description
-
-        Json e ->
-            e |> Json.errorToString
+                NotAuthenticated ->
+                    "You need to be authenticated for that, but are not, please sign in."

@@ -1,27 +1,39 @@
 {
-  listenOn: 8081,
+  // The port to listen on.
+  listenOn: 8083,
 
+  // How to connect to the postgres server to store the data for the application.
   connection: {
-    host: "postgres",
+    host: "localhost",
     port: 5432,
-    user: "manydecks",
-    database: "manydecks",
-    password: "manydecks",
+    user: "massivedecks",
+    database: "massivedecks",
+    password: "massivedecks",
     keepAlive: false,
   },
 
   auth: {
+    // This is how we
     local: {
-      issuer: "",
+      // A unqiue ID for this server. Changing this will sign out every user.
+      issuer: "CHANGE ME",
+      // A secret for generating tokens.
       secret: "CHANGE ME",
+      // The algorithm used for tokens.
       algorithm: "HS256",
+      // If you want to support older algorithms so users don't get kicked off when you change the active algorithm.
       historicAlgorithms: [],
+      // How long a user stays signed in for.
       expiresIn: "3h",
     },
 
-    google: {
-      id: "CHANGE ME",
-      secret: "CHANGE ME",
-    },
+    // If defined, Allows a user to sign into a guest account without any authorization. This is intended for development.
+    guest: {},
+
+    // Allows a user to sign in via Google Sign-In for Websites.
+    // See https://developers.google.com/identity/sign-in/web to obtain these details.
+    // google: {
+    //   id: "CHANGE ME", // A client id in the form "YOUR_CLIENT_ID.apps.googleusercontent.com" (include the latter part).
+    // },
   },
 }

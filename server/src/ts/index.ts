@@ -10,12 +10,12 @@ import * as Code from "./deck/code";
 import Json5 from "json5";
 import { promises as fs } from "fs";
 import * as Store from "./store";
-import * as Errors from "./errors";
 import * as Auth from "./user/auth";
 import { default as GoogleAuth } from "google-auth-library";
 import * as Uuid from "uuid";
 // @ts-ignore
 import { default as Zip } from "express-easy-zip";
+import * as Errors from "./errors";
 
 sourceMapSupport.install();
 
@@ -37,7 +37,10 @@ const main = async (): Promise<void> => {
   const store = await Store.init(config.connection);
   const auth = new Auth.Auth(config.auth.local);
 
-  const google = new GoogleAuth.OAuth2Client(config.auth.google.id);
+  const google =
+    config.auth.google == undefined
+      ? undefined
+      : new GoogleAuth.OAuth2Client(config.auth.google.id);
 
   const app = express();
 
@@ -52,6 +55,14 @@ const main = async (): Promise<void> => {
     })
   );
 
+  app.get("/api/auth", async (req, res) => {
+    const auth = config.auth;
+    res.json({
+      ...(auth.guest !== undefined ? { guest: {} } : {}),
+      ...(auth.google !== undefined ? { google: { id: auth.google.id } } : {}),
+    });
+  });
+
   app.post("/api/users", async (req, res) => {
     if (req.body.token !== undefined) {
       const claims = auth.validate(req.body.token);
@@ -60,7 +71,10 @@ const main = async (): Promise<void> => {
       await store.changeUser(id, name);
       res.json({ token: auth.sign({ sub: id }), name });
       return;
-    } else {
+    } else if (req.body.google !== undefined) {
+      if (google === undefined) {
+        throw new Errors.AuthFailure();
+      }
       const ticket = await google.verifyIdToken({
         idToken: req.body.google,
         audience: config.auth.google.id,
@@ -74,8 +88,12 @@ const main = async (): Promise<void> => {
         res.json({ token: auth.sign({ sub: id }), name });
         return;
       }
+    } else if (req.body.guest) {
+      const { id, name } = await store.findOrCreateGuestUser();
+      res.json({ token: auth.sign({ sub: id }), name });
+      return;
     }
-    res.status(HttpStatus.UNAUTHORIZED).json({ error: "NotAuthenticated" });
+    throw new Errors.AuthFailure();
   });
 
   app.delete("/api/users", async (req, res) => {

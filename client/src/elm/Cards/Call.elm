@@ -23,7 +23,7 @@ import Html exposing (Html)
 import Json.Decode as Json
 import Json.Encode
 import List.Extra as List
-import ManyDecks.Pages.Edit.CallEditor.Model as Editor exposing (Atom(..))
+import ManyDecks.Pages.Decks.Edit.CallEditor.Model as Editor exposing (Atom(..))
 
 
 type Call

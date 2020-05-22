@@ -1,164 +1,138 @@
 module ManyDecks.Pages.Decks exposing (..)
 
-import Bytes exposing (Bytes)
-import Cards.Deck as Deck exposing (Deck)
+import Browser.Navigation as Navigation
+import File
+import File.Select as File
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import Html exposing (Html)
-import Html.Attributes as HtmlA
-import Html.Events as HtmlE
-import Html.Keyed as HtmlK
-import Http
-import Json.Decode as Json
-import Json.Encode
-import Json.Patch
-import Json.Patch.Invertible as Json
-import ManyDecks.Messages exposing (Msg(..))
-import ManyDecks.Pages.Decks.Deck as Deck exposing (codeDecoder)
-import ManyDecks.Pages.Decks.Model exposing (..)
-import Material.Button as Button
-import Material.Card as Card
+import ManyDecks.Api as Api
+import ManyDecks.Messages as Global
+import ManyDecks.Model as Route exposing (Model)
+import ManyDecks.Pages.Decks.Deck as Deck
+import ManyDecks.Pages.Decks.Edit as Edit
+import ManyDecks.Pages.Decks.List as List
+import ManyDecks.Pages.Decks.Messages exposing (Msg(..))
+import ManyDecks.Pages.Decks.Model exposing (CodeAndSummary)
+import ManyDecks.Pages.Decks.Route as Route exposing (Route)
+import ManyDecks.Ports as Ports
+import ManyDecks.Route as GlobalRoute
+import Task
 
 
-view : Maybe (List CodeAndSummary) -> List (Html Msg)
-view decks =
-    let
-        renderedDecks =
-            case decks of
+update : Msg -> Model -> ( Model, Cmd Global.Msg )
+update msg model =
+    case msg of
+        ReceiveDecks decks ->
+            ( { model | decks = Just decks }, Cmd.none )
+
+        UploadDeck ->
+            ( model, File.file [ ".deck.json5" ] (UploadedDeck >> Global.DecksMsg) )
+
+        UploadedDeck file ->
+            ( model, file |> File.toString |> Task.perform (Json5Parse >> Global.DecksMsg) )
+
+        Json5Parse raw ->
+            ( model, Ports.json5Decode raw )
+
+        NewDeck d ->
+            let
+                token =
+                    model.auth |> Maybe.map .token |> Maybe.withDefault ""
+            in
+            ( model, Api.createDeck token d (\code -> EditDeck code (Just d) |> Global.DecksMsg) )
+
+        Copy id ->
+            ( model, Ports.copy id )
+
+        EditDeck code maybeDeck ->
+            case maybeDeck of
                 Just d ->
-                    d |> List.map deck |> HtmlK.ul []
+                    let
+                        route =
+                            Route.Decks (Route.Edit code)
+
+                        changeRouteIfNeeded =
+                            if model.route == route then
+                                Cmd.none
+
+                            else
+                                route |> GlobalRoute.toUrl |> Navigation.pushUrl model.navKey
+                    in
+                    ( { model | edit = d |> Edit.init |> Just }, changeRouteIfNeeded )
 
                 Nothing ->
-                    Icon.spinner |> Icon.viewStyled [ Icon.spin ]
+                    ( model, GlobalRoute.redirectTo (Route.Decks (Route.Edit code)) model.navKey )
 
-        newDeck =
-            Button.view Button.Raised
-                Button.Padded
-                "New Deck"
-                (Icon.plus |> Icon.viewIcon |> Just)
-                (Deck.empty |> NewDeck |> Just)
+        BackFromEdit ->
+            ( model, GlobalRoute.redirectTo (Route.Decks Route.List) model.navKey )
 
-        uploadDeck =
-            Button.view Button.Raised
-                Button.Padded
-                "Upload Deck"
-                (Icon.upload |> Icon.viewIcon |> Just)
-                (Just UploadDeck)
+        Delete code ->
+            case model.auth of
+                Just auth ->
+                    let
+                        newDecks =
+                            model.decks |> Maybe.map (List.filter (\d -> d.code /= code))
+                    in
+                    ( { model | decks = newDecks, edit = Nothing }
+                    , Api.deleteDeck auth.token code (DeckDeleted >> Global.DecksMsg)
+                    )
 
-        controls =
-            Html.div [ HtmlA.class "controls" ] [ uploadDeck, newDeck ]
-    in
-    [ Card.view [ HtmlA.class "decks" ] [ renderedDecks, controls ] ]
+                Nothing ->
+                    ( model, GlobalRoute.redirectTo Route.Login model.navKey )
 
+        DeckDeleted code ->
+            let
+                newDecks =
+                    model.decks |> Maybe.map (List.filter (\d -> d.code /= code))
+            in
+            ( { model | decks = newDecks, edit = Nothing }, GlobalRoute.redirectTo (Route.Decks Route.List) model.navKey )
 
-deck : CodeAndSummary -> ( String, Html Msg )
-deck { code, summary } =
-    ( code |> Deck.codeToString
-    , Html.li [ HtmlA.class "deck" ]
-        [ Deck.viewCode Copy code
-        , Html.div [ HtmlA.class "details", EditDeck code Nothing False |> HtmlE.onClick ]
-            [ Html.span [ HtmlA.class "name", HtmlA.title summary.details.name ] [ Html.text summary.details.name ]
-            , Html.span [ HtmlA.class "language" ] [ summary.details.language |> Maybe.withDefault "" |> Html.text ]
-            ]
-        , Html.div [ HtmlA.class "cards" ]
-            [ Html.span [ HtmlA.class "calls", HtmlA.title "Calls" ]
-                [ summary.calls |> String.fromInt |> Html.text ]
-            , Html.span [ HtmlA.class "responses", HtmlA.title "Responses" ]
-                [ summary.responses |> String.fromInt |> Html.text ]
-            ]
-        ]
-    )
+        Save code patch ->
+            case model.auth of
+                Just auth ->
+                    let
+                        updateDeck edit =
+                            { edit | changes = [] }
+                    in
+                    ( { model | edit = model.edit |> Maybe.map updateDeck }
+                    , Api.save auth.token code patch (DeckSaved code >> Global.DecksMsg)
+                    )
 
+                Nothing ->
+                    ( model, GlobalRoute.redirectTo Route.Login model.navKey )
 
-getDeck : Deck.Code -> (Result Http.Error Deck -> msg) -> Cmd msg
-getDeck code toMsg =
-    Http.get
-        { url = "/api/decks/" ++ (code |> Deck.codeToString)
-        , expect = Http.expectJson toMsg Deck.decode
-        }
+        DeckSaved code deck ->
+            let
+                replace d =
+                    if d.code == code then
+                        { code = code, summary = Deck.summaryOf deck }
 
+                    else
+                        d
 
-getDecks : String -> (Result Http.Error (List CodeAndSummary) -> msg) -> Cmd msg
-getDecks token toMsg =
-    Http.post
-        { url = "/api/decks"
-        , body = [ ( "token", token |> Json.Encode.string ) ] |> Json.Encode.object |> Http.jsonBody
-        , expect = Http.expectJson toMsg (summaryAndCodeDecoder |> Json.list)
-        }
-
-
-createDeck : String -> Deck.Deck -> (Result Http.Error Deck.Code -> msg) -> Cmd msg
-createDeck token d toMsg =
-    Http.post
-        { url = "/api/decks"
-        , body =
-            [ ( "token", token |> Json.Encode.string )
-            , ( "initial", d |> Deck.encode )
-            ]
-                |> Json.Encode.object
-                |> Http.jsonBody
-        , expect = Http.expectJson toMsg codeDecoder
-        }
+                updateDeck edit =
+                    { edit | deck = deck.deck }
+            in
+            ( { model
+                | edit = model.edit |> Maybe.map updateDeck
+                , decks = model.decks |> Maybe.map (List.map replace)
+              }
+            , Cmd.none
+            )
 
 
-deleteDeck : String -> Deck.Code -> Cmd Msg
-deleteDeck token code =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/api/decks/" ++ Deck.codeToString code
-        , body = [ ( "token", token |> Json.Encode.string ) ] |> Json.Encode.object |> Http.jsonBody
-        , expect = Http.expectWhatever (always NoOp)
-        , timeout = Nothing
-        , tracker = Nothing
-        }
+view : Route -> Model -> List (Html Global.Msg)
+view route model =
+    case route of
+        Route.List ->
+            List.view model
 
+        Route.Edit code ->
+            case model.edit of
+                Just edit ->
+                    Edit.view code edit
 
-save : String -> Deck.Code -> Json.Patch -> (Result Http.Error () -> msg) -> Cmd msg
-save token code patch toMsg =
-    Http.request
-        { method = "PATCH"
-        , headers = []
-        , url = "/api/decks/" ++ Deck.codeToString code
-        , body =
-            [ ( "token", token |> Json.Encode.string )
-            , ( "patch", patch |> Json.toPatch |> Json.Patch.encoder )
-            ]
-                |> Json.Encode.object
-                |> Http.jsonBody
-        , expect = Http.expectWhatever toMsg
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
-backup : String -> (Result Http.Error Bytes -> msg) -> Cmd msg
-backup token toMsg =
-    Http.post
-        { url = "/api/backup"
-        , body =
-            [ ( "token", token |> Json.Encode.string ) ]
-                |> Json.Encode.object
-                |> Http.jsonBody
-        , expect = Http.expectBytesResponse toMsg resolve
-        }
-
-
-resolve : Http.Response Bytes -> Result Http.Error Bytes
-resolve response =
-    case response of
-        Http.BadUrl_ url ->
-            Err (Http.BadUrl url)
-
-        Http.Timeout_ ->
-            Err Http.Timeout
-
-        Http.NetworkError_ ->
-            Err Http.NetworkError
-
-        Http.BadStatus_ metadata _ ->
-            Err (Http.BadStatus metadata.statusCode)
-
-        Http.GoodStatus_ _ body ->
-            Ok body
+                Nothing ->
+                    [ Html.div [] [ Icon.spinner |> Icon.viewStyled [ Icon.spin ] ] ]

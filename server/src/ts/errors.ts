@@ -64,3 +64,12 @@ export class AuthFailure extends ManyDecksError {
     super("Authentication failure.");
   }
 }
+
+export class NotAuthenticated extends ManyDecksError {
+  public readonly type = "NotAuthenticated";
+  public readonly status = HttpStatus.UNAUTHORIZED;
+
+  public constructor() {
+    super("User needs to be authenticated for that.");
+  }
+}

@@ -3,53 +3,34 @@ module ManyDecks exposing (..)
 import Browser
 import Browser.Navigation as Navigation
 import Cards.Deck as Deck
-import File
-import File.Download as File
-import File.Select as File
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Html
 import Html.Attributes as HtmlA
-import Http
 import Json.Decode as Json
 import ManyDecks.Auth exposing (Auth)
-import ManyDecks.Error as Error exposing (Error)
-import ManyDecks.Google as Google
-import ManyDecks.Messages exposing (Msg(..))
+import ManyDecks.Auth.Google as Google
+import ManyDecks.Error as Error
+import ManyDecks.Error.Model as Error exposing (Error)
+import ManyDecks.Messages exposing (..)
+import ManyDecks.Model exposing (..)
 import ManyDecks.Pages.Decks as Decks
-import ManyDecks.Pages.Decks.Model as Decks
-import ManyDecks.Pages.Edit as Edit
-import ManyDecks.Pages.Edit.Model as Edit
+import ManyDecks.Pages.Decks.Edit as Edit
+import ManyDecks.Pages.Decks.Messages as Decks
+import ManyDecks.Pages.Decks.Route as DecksRoute
 import ManyDecks.Pages.Login as Login
+import ManyDecks.Pages.Login.Messages as Login
+import ManyDecks.Pages.NotFound as NotFound
 import ManyDecks.Pages.Profile as Profile
-import ManyDecks.Pages.Profile.Model as Profile
 import ManyDecks.Ports as Ports
+import ManyDecks.Route as Route
 import Material.Button as Button
-import Task
 import Url exposing (Url)
 
 
 type alias Flags =
     { auth : Maybe Auth }
-
-
-type alias Model =
-    { core : Maybe CoreModel
-    , error : Maybe Error
-    }
-
-
-type alias CoreModel =
-    { auth : Auth
-    , decks : Maybe (List Decks.CodeAndSummary)
-    , profile : Profile.Model
-    , edit : Maybe Edit.Model
-    }
-
-
-initCore auth =
-    { auth = auth, decks = Nothing, profile = Profile.init auth, edit = Nothing }
 
 
 main : Program Flags Model Msg
@@ -66,14 +47,20 @@ main =
 
 init : Flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( { core = flags.auth |> Maybe.map initCore, error = Nothing }
-    , case flags.auth of
-        Just auth ->
-            Decks.getDecks auth.token decksFromResult
-
-        Nothing ->
-            Cmd.none
-    )
+    let
+        model =
+            { navKey = key
+            , route = Route.fromUrl url
+            , error = Nothing
+            , auth = flags.auth
+            , authMethods = Nothing
+            , usernameField = flags.auth |> Maybe.map .name |> Maybe.withDefault ""
+            , decks = Nothing
+            , profileDeletionEnabled = False
+            , edit = Nothing
+            }
+    in
+    Route.onRouteChanged model.route model
 
 
 subscriptions : Model -> Sub Msg
@@ -82,26 +69,26 @@ subscriptions model =
         googleAuthResultToMessage value =
             case value |> Json.decodeValue Google.authResult of
                 Ok (Ok code) ->
-                    GoogleAuthResult code
+                    code |> Login.GoogleAuthResult |> LoginMsg
 
                 Ok (Err error) ->
-                    error |> Error
+                    Error.AuthFailure |> Error.Transient |> SetError
 
                 Err error ->
-                    error |> Json.errorToString |> Error
+                    error |> Error.BadResponse |> Error.Application |> SetError
 
         json5DecodedToMessage value =
             case value |> Json.decodeValue Deck.decode of
                 Ok deck ->
-                    NewDeck deck
+                    deck |> Decks.NewDeck |> DecksMsg
 
                 Err error ->
-                    error |> Json.errorToString |> Error
+                    error |> Error.BadResponse |> Error.Application |> SetError
     in
     Sub.batch
         [ Ports.googleAuthResult googleAuthResultToMessage
         , Ports.json5Decoded json5DecodedToMessage
-        , model.core |> Maybe.andThen .edit |> Maybe.map (Edit.subscriptions EditMsg) |> Maybe.withDefault Sub.none
+        , model.edit |> Maybe.map Edit.subscriptions |> Maybe.withDefault Sub.none
         ]
 
 
@@ -112,213 +99,52 @@ onUrlRequest urlRequest =
 
 onUrlChange : Url -> Msg
 onUrlChange url =
-    NoOp
+    url |> Route.fromUrl |> OnRouteChanged
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        OnRouteChanged newRoute ->
+            Route.onRouteChanged newRoute model
+
+        ChangePage route ->
+            ( model, Route.redirectTo route model.navKey )
+
         SetError error ->
-            ( { model | error = Just error }, Cmd.none )
+            case error of
+                Error.Transient Error.AuthFailure ->
+                    ( model, Route.redirectTo Login model.navKey )
 
-        TryGoogleAuth ->
-            ( model, Ports.tryGoogleAuth () )
+                Error.User Error.NotAuthenticated ->
+                    ( model, Route.redirectTo Login model.navKey )
 
-        GoogleAuthResult code ->
-            let
-                authFromGoogleCode result =
-                    case result of
-                        Ok token ->
-                            MdAuthResult token
+                _ ->
+                    ( { model | error = Just error }, Cmd.none )
 
-                        Err error ->
-                            error |> Error.Http |> SetError
-            in
-            ( model, Google.signIn code authFromGoogleCode )
+        ClearError ->
+            ( { model | error = Nothing }, Cmd.none )
 
-        MdAuthResult auth ->
-            ( { model | core = auth |> initCore |> Just }
-            , Cmd.batch
-                [ Decks.getDecks auth.token decksFromResult
-                , auth |> Just |> Ports.storeAuth
-                ]
-            )
+        LoginMsg loginMsg ->
+            Login.update loginMsg model
 
-        ReceiveDecks decks ->
-            let
-                add m =
-                    { m | decks = Just decks }
-            in
-            ( { model | core = model.core |> Maybe.map add }, Cmd.none )
-
-        UploadDeck ->
-            ( model, File.file [ ".deck.json5" ] UploadedDeck )
-
-        UploadedDeck file ->
-            ( model, file |> File.toString |> Task.perform Json5Parse )
-
-        Json5Parse raw ->
-            ( model, Ports.json5Decode raw )
-
-        NewDeck d ->
-            let
-                token =
-                    model.core |> Maybe.map (.auth >> .token) |> Maybe.withDefault ""
-
-                newDeck result =
-                    case result of
-                        Ok code ->
-                            EditDeck code (Just d) True
-
-                        Err error ->
-                            error |> Error.Http |> SetError
-            in
-            ( model, Decks.createDeck token d newDeck )
-
-        EditDeck code deck needsToBeAdded ->
-            case deck of
-                Just d ->
-                    case model.core of
-                        Just m ->
-                            let
-                                decks =
-                                    if needsToBeAdded then
-                                        let
-                                            summary =
-                                                { details =
-                                                    { name = d.name
-                                                    , author = d.author |> Maybe.withDefault m.auth.name
-                                                    , language = d.language
-                                                    }
-                                                , calls = d.calls |> List.length
-                                                , responses = d.responses |> List.length
-                                                , version = 0
-                                                }
-                                        in
-                                        m.decks |> Maybe.map (\ds -> ds ++ [ { code = code, summary = summary } ])
-
-                                    else
-                                        m.decks
-                            in
-                            ( { model | core = Just { m | edit = Edit.init code d |> Just, decks = decks } }, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                Nothing ->
-                    let
-                        handle result =
-                            case result of
-                                Ok d ->
-                                    EditDeck code (Just d) needsToBeAdded
-
-                                Err error ->
-                                    error |> Error.Http |> SetError
-                    in
-                    ( model, Decks.getDeck code handle )
-
-        BackFromEdit ->
-            case model.core of
-                Just m ->
-                    ( { model | core = Just { m | edit = Nothing } }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        Delete code ->
-            case model.core of
-                Just m ->
-                    let
-                        newDecks =
-                            m.decks |> Maybe.map (List.filter (\d -> d.code /= code))
-                    in
-                    ( { model | core = Just { m | decks = newDecks, edit = Nothing } }
-                    , Decks.deleteDeck m.auth.token code
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        Save code patch ->
-            case model.core of
-                Just m ->
-                    let
-                        handle result =
-                            case result of
-                                Ok () ->
-                                    BackFromEdit
-
-                                Err error ->
-                                    error |> Error.Http |> SetError
-                    in
-                    ( model, Decks.save m.auth.token code patch handle )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        Copy id ->
-            ( model, Ports.copy id )
+        DecksMsg decksMsg ->
+            Decks.update decksMsg model
 
         ProfileMsg profileMsg ->
-            case model.core of
-                Just m ->
-                    let
-                        ( newP, cmd ) =
-                            m.profile |> Profile.update SignOut UpdateAuth ProfileMsg m.auth.token profileMsg
-                    in
-                    ( { model | core = Just { m | profile = newP } }, cmd )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Profile.update profileMsg model
 
         EditMsg editMsg ->
-            case model.core of
-                Just m ->
-                    case m.edit of
-                        Just e ->
-                            let
-                                ( newE, cmd ) =
-                                    Edit.update editMsg e
-                            in
-                            ( { model | core = Just { m | edit = Just newE } }, cmd )
-
-                        Nothing ->
-                            ( model, Cmd.none )
+            case model.edit of
+                Just e ->
+                    let
+                        ( newE, cmd ) =
+                            Edit.update editMsg e
+                    in
+                    ( { model | edit = Just newE }, cmd )
 
                 Nothing ->
                     ( model, Cmd.none )
-
-        Backup ->
-            let
-                handleResult result =
-                    case result of
-                        Ok file ->
-                            DownloadBytes file
-
-                        Err error ->
-                            error |> Error.Http |> SetError
-
-                cmd =
-                    model.core |> Maybe.map (\m -> Decks.backup m.auth.token handleResult) |> Maybe.withDefault Cmd.none
-            in
-            ( model, cmd )
-
-        DownloadBytes bytes ->
-            ( model, File.bytes "backup.zip" "application/zip" bytes )
-
-        UpdateAuth newAuth ->
-            case model.core of
-                Just m ->
-                    ( { model | core = Just { m | auth = newAuth } }, newAuth |> Just |> Ports.storeAuth )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        SignOut ->
-            ( { model | core = Nothing }, Ports.storeAuth Nothing )
-
-        Error _ ->
-            ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -331,61 +157,56 @@ view model =
             Error.view model.error
 
         body =
-            case model.core of
-                Nothing ->
-                    [ Html.div [ HtmlA.class "content" ] [ Login.view ] ]
+            case model.route of
+                Login ->
+                    Login.view model
 
-                Just m ->
-                    let
-                        content =
-                            if m.profile.viewing then
-                                Profile.view ProfileMsg Backup m.auth m.profile
+                Profile ->
+                    Profile.view model
 
-                            else
-                                case m.edit of
-                                    Just edit ->
-                                        Edit.view BackFromEdit Save Delete EditMsg edit
+                Decks route ->
+                    Decks.view route model
 
-                                    Nothing ->
-                                        Decks.view m.decks
-                    in
-                    [ generalNav m
-                    , Html.div [ HtmlA.class "content" ] content
-                    ]
+                NotFound requested ->
+                    NotFound.view requested model
     in
     { title = "Many Decks"
-    , body = Icon.css :: error :: body
+    , body =
+        [ Icon.css
+        , error
+        , generalNav model
+        , Html.div [ HtmlA.class "content" ] body
+        ]
     }
 
 
 generalNav model =
-    let
-        viewProfile =
-            model.profile.viewing |> not |> Profile.SetViewingProfile |> ProfileMsg
-    in
-    Html.nav []
-        [ Html.div [ HtmlA.id "sign-out" ]
-            [ Button.view Button.Standard
-                Button.Padded
-                "Sign Out"
-                (Icon.signOutAlt |> Icon.viewIcon |> Just)
-                (Just SignOut)
-            ]
-        , Html.div [ HtmlA.id "view-profile" ]
-            [ Button.view Button.Standard
-                Button.Padded
-                (model.auth.name ++ "'s Profile")
-                (Icon.userCircle |> Icon.viewIcon |> Just)
-                (Just viewProfile)
-            ]
-        ]
+    case model.auth of
+        Just auth ->
+            let
+                viewProfile =
+                    if model.route == Profile then
+                        ChangePage (Decks DecksRoute.List)
 
+                    else
+                        ChangePage Profile
+            in
+            Html.nav []
+                [ Html.div [ HtmlA.id "sign-out" ]
+                    [ Button.view Button.Standard
+                        Button.Padded
+                        "Sign Out"
+                        (Icon.signOutAlt |> Icon.viewIcon |> Just)
+                        (Login.SignOut |> LoginMsg |> Just)
+                    ]
+                , Html.div [ HtmlA.id "view-profile" ]
+                    [ Button.view Button.Standard
+                        Button.Padded
+                        (auth.name ++ "'s Profile")
+                        (Icon.userCircle |> Icon.viewIcon |> Just)
+                        (Just viewProfile)
+                    ]
+                ]
 
-decksFromResult : Result Http.Error (List Decks.CodeAndSummary) -> Msg
-decksFromResult result =
-    case result of
-        Ok token ->
-            ReceiveDecks token
-
-        Err error ->
-            error |> Error.Http |> SetError
+        Nothing ->
+            Html.text ""

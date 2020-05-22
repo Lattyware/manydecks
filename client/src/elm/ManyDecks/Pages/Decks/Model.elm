@@ -11,8 +11,8 @@ type alias CodeAndSummary =
     }
 
 
-summaryAndCodeDecoder : Json.Decoder CodeAndSummary
-summaryAndCodeDecoder =
+codeAndSummaryDecoder : Json.Decoder CodeAndSummary
+codeAndSummaryDecoder =
     Json.succeed CodeAndSummary
         |> Json.required "code" Deck.codeDecoder
         |> Json.required "summary" Deck.summaryDecoder

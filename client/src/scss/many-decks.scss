@@ -19,12 +19,12 @@ body {
   min-height: 100vh;
   min-width: 100vw;
 
+  background-color: #212121;
+
   display: flex;
   flex-direction: column;
   justify-content: stretch;
   align-items: stretch;
-
-  background-color: #212121;
 
   font-family: "Helvetica Neue", "Nimbus Sans L", sans-serif;
 }
@@ -76,7 +76,7 @@ mwc-button {
 
   background-color: transparentize(#ff0000, 0.7);
 
-  font-size: 3em;
+  font-size: 1.2em;
 
   z-index: 999;
 

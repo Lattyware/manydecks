@@ -4,7 +4,7 @@ import Json.Decode as Json
 import ManyDecks.Auth as Auth
 
 
-port tryGoogleAuth : () -> Cmd msg
+port tryGoogleAuth : String -> Cmd msg
 
 
 port googleAuthResult : (Json.Value -> msg) -> Sub msg
