@@ -5,17 +5,22 @@ module ManyDecks.Pages.Decks.Edit.CallEditor exposing
     , view
     )
 
-import Browser.Events as Browser
 import Cards.Call as Call
-import Cards.Call.Style as Style
-import Cards.Call.Transform as Transform
+import Cards.Call.Style as Style exposing (Style)
+import Cards.Call.Transform as Transform exposing (Transform)
 import Cards.Card as Card
+import Diff
+import FontAwesome.Icon as Icon
+import FontAwesome.Layering as Icon
+import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as Json
 import List.Extra as List
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model exposing (..)
+import ManyDecks.Ports as Ports
+import Material.IconButton as IconButton
 
 
 deleteSpan : Span -> Model -> Model
@@ -27,7 +32,7 @@ deleteSpan { start, end } model =
         right =
             model.atoms |> List.drop end
     in
-    { model | atoms = List.concat [ left, right ], selection = Nothing, cursor = start }
+    { model | atoms = List.concat [ left, right ], selection = span start start }
 
 
 insertAt : List Atom -> Position -> Model -> Model
@@ -38,160 +43,19 @@ insertAt new position model =
 
         atoms =
             List.concat [ left, new, right ]
+
+        endPos =
+            position + List.length new
     in
-    { model | atoms = atoms, cursor = position + List.length new }
+    { model | atoms = atoms, selection = span endPos endPos }
 
 
-moveCursor : (Position -> Position) -> Model -> Model
-moveCursor move model =
-    let
-        afterLast =
-            List.length model.atoms
-
-        cursor =
-            min afterLast (max (model.cursor |> move) 0)
-
-        selection =
-            case model.selecting of
-                Just start ->
-                    selectionOf start cursor
-
-                Nothing ->
-                    Nothing
-    in
-    { model | cursor = cursor, selection = selection }
-
-
-moveRow : Int -> Model -> Model
-moveRow diff model =
-    let
-        applyNTimes n f value =
-            if n > 0 then
-                value |> f |> applyNTimes (n - 1) f
-
-            else
-                value
-
-        atoms =
-            model.atoms
-    in
-    if diff > 0 then
-        model |> applyNTimes diff (moveCursor (\p -> p + toEndOfLine atoms p + 1))
-
-    else
-        model |> applyNTimes -diff (moveCursor (\p -> p - toStartOfLine atoms p - 1))
-
-
-toEndOfLine : List Atom -> Position -> Int
-toEndOfLine atoms p =
-    atoms
-        |> List.drop p
-        |> List.findIndex ((==) NewLine)
-        |> Maybe.withDefault (List.length atoms)
-
-
-toStartOfLine : List Atom -> Position -> Int
-toStartOfLine atoms p =
-    let
-        pRev =
-            List.length atoms - p
-    in
-    atoms
-        |> List.reverse
-        |> List.drop pRev
-        |> List.findIndex ((==) NewLine)
-        |> Maybe.withDefault p
-
-
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
-        KeyUp key ->
-            case key of
-                Control "Shift" ->
-                    { model | selecting = Nothing }
-
-                Control "Control" ->
-                    { model | control = False }
-
-                _ ->
-                    model
-
-        KeyDown key ->
-            let
-                cursor =
-                    model.cursor
-
-                op =
-                    case key of
-                        Control "Delete" ->
-                            case model.selection of
-                                Nothing ->
-                                    deleteSpan (span cursor (cursor + 1))
-
-                                Just selection ->
-                                    deleteSpan selection
-
-                        Control "Backspace" ->
-                            case model.selection of
-                                Nothing ->
-                                    deleteSpan (span (cursor - 1) cursor)
-
-                                Just selection ->
-                                    deleteSpan selection
-
-                        Control "Enter" ->
-                            case model.selection of
-                                Nothing ->
-                                    insertAt [ NewLine ] cursor
-
-                                Just selection ->
-                                    deleteSpan selection >> (\m -> insertAt [ NewLine ] m.cursor m)
-
-                        Control "ArrowLeft" ->
-                            moveCursor (\c -> c - 1)
-
-                        Control "ArrowRight" ->
-                            moveCursor (\c -> c + 1)
-
-                        Control "ArrowUp" ->
-                            moveRow -1
-
-                        Control "ArrowDown" ->
-                            moveRow 1
-
-                        Control "End" ->
-                            moveCursor (\p -> p + toEndOfLine model.atoms p)
-
-                        Control "Home" ->
-                            moveCursor (\p -> p - toStartOfLine model.atoms p)
-
-                        Control "Shift" ->
-                            \m -> { m | selecting = Just m.cursor }
-
-                        Control "Control" ->
-                            \m -> { m | control = True }
-
-                        Character char ->
-                            if model.control then
-                                identity
-
-                            else
-                                case model.selection of
-                                    Nothing ->
-                                        insertAt [ Letter char ] cursor
-
-                                    Just selection ->
-                                        deleteSpan selection >> insertAt [ Letter char ] selection.start
-
-                        _ ->
-                            identity
-            in
-            op model
-
         Enter position ->
             let
-                ( selection, cursor ) =
+                selection =
                     case model.selecting of
                         Just start ->
                             let
@@ -202,45 +66,35 @@ update msg model =
                                     else
                                         position + 1
                             in
-                            ( selectionOf start end, end )
+                            span start end
 
                         Nothing ->
-                            let
-                                c =
-                                    if model.moving /= Nothing then
-                                        position
+                            if model.moving /= Nothing then
+                                span position position
 
-                                    else
-                                        model.cursor
-                            in
-                            ( model.selection, c )
+                            else
+                                model.selection
             in
-            { model | hover = Just position, selection = selection, cursor = cursor }
+            ( { model | selection = selection }, Ports.setCallInputGhostSelection selection )
 
         Leave position ->
-            let
-                hover =
-                    if model.hover == Just position then
-                        Nothing
-
-                    else
-                        model.hover
-            in
-            { model | hover = hover }
+            ( model, Cmd.none )
 
         StartSelection position ->
-            { model
-                | selection = Nothing
-                , selecting = Just position
-                , cursor = position
-            }
+            let
+                selection =
+                    span position position
+            in
+            ( { model | selection = selection, selecting = Just position }
+            , Ports.setCallInputGhostSelection selection
+            )
 
         StartMoving position ->
-            { model | moving = Just position }
+            ( { model | moving = Just position }, Cmd.none )
 
         EndSelection position ->
             let
-                ( s, cursor ) =
+                s =
                     case model.selecting of
                         Just start ->
                             let
@@ -251,19 +105,19 @@ update msg model =
                                     else
                                         position + 1
                             in
-                            ( selectionOf start end, end )
+                            span start end
 
                         Nothing ->
-                            ( Nothing, position )
+                            span position position
 
                 m =
-                    { model | selection = s, selecting = Nothing, cursor = cursor }
+                    { model | selection = s, selecting = Nothing }
 
                 newModel =
                     case m.moving of
                         Just from ->
                             if from == position then
-                                { m | selection = span from (from + 1) |> Just }
+                                { m | selection = span from (from + 1) }
 
                             else
                                 let
@@ -287,18 +141,98 @@ update msg model =
                         Nothing ->
                             m
             in
-            { newModel | moving = Nothing }
+            ( { newModel | moving = Nothing }, Ports.setCallInputGhostSelection newModel.selection )
 
         AddSlot ->
-            model |> insertAt [ Slot Transform.None Style.None ] model.cursor
+            let
+                newModel =
+                    model
+                        |> deleteSpan model.selection
+                        |> insertAt [ Slot Transform.None Style.None ] model.selection.start
+            in
+            ( newModel, Ports.setCallInputGhostSelection newModel.selection )
+
+        SetStyle style ->
+            ( applyToSelection (setStyle style) model, Cmd.none )
+
+        SetTransform transform ->
+            let
+                setTransform atom =
+                    case atom of
+                        Slot _ s ->
+                            Slot transform s
+
+                        _ ->
+                            atom
+            in
+            ( applyToSelection setTransform model, Cmd.none )
+
+        UpdateFromGhost str ->
+            let
+                old =
+                    model.atoms |> List.map atomToChar
+
+                new =
+                    str |> String.toList
+
+                diff =
+                    Diff.diff old new
+
+                folder change ( input, output ) =
+                    case change of
+                        Diff.NoChange _ ->
+                            case input of
+                                first :: rest ->
+                                    ( rest, Just first :: output )
+
+                                _ ->
+                                    ( input, output )
+
+                        Diff.Added char ->
+                            let
+                                previousStyle =
+                                    case output of
+                                        first :: _ ->
+                                            first |> Maybe.andThen getStyle
+
+                                        _ ->
+                                            Nothing
+
+                                setStyleIfPrevious =
+                                    previousStyle |> Maybe.map (\s -> setStyle s) |> Maybe.withDefault identity
+                            in
+                            ( input, (char |> charToAtom |> setStyleIfPrevious |> Just) :: output )
+
+                        Diff.Removed _ ->
+                            case input of
+                                _ :: rest ->
+                                    ( rest, output )
+
+                                _ ->
+                                    ( input, output )
+
+                ( _, updated ) =
+                    List.foldl folder ( model.atoms, [] ) diff
+            in
+            ( { model | atoms = updated |> List.filterMap identity |> List.reverse }, Cmd.none )
+
+        GhostSelectionChanged selection ->
+            ( { model | selection = selection }, Cmd.none )
+
+
+applyToSelection : (Atom -> Atom) -> Model -> Model
+applyToSelection f model =
+    { model | atoms = model.atoms |> applyToSpan model.selection f }
+
+
+applyToSpan : Span -> (Atom -> Atom) -> List Atom -> List Atom
+applyToSpan s f =
+    List.updateIfIndex (\i -> inSpan i s) f
 
 
 subscriptions : (Msg -> msg) -> Sub msg
 subscriptions wrap =
-    Sub.batch
-        [ Browser.onKeyDown (keyDecoder |> Json.map (KeyDown >> wrap))
-        , Browser.onKeyUp (keyDecoder |> Json.map (KeyUp >> wrap))
-        ]
+    Ports.getCallInputGhostSelection (GhostSelectionChanged >> wrap)
 
 
 lines : List Atom -> List (List ( Int, Atom ))
@@ -311,10 +245,150 @@ lines =
 view : (Msg -> msg) -> Model -> Html msg
 view wrap model =
     let
+        stringVersion =
+            model.atoms
+                |> List.map atomToChar
+                |> String.fromList
+
+        callInputGhost =
+            Html.textarea
+                [ HtmlA.id "call-input-ghost"
+                , HtmlA.value stringVersion
+                , HtmlE.onInput (UpdateFromGhost >> wrap)
+                , onSelect (GhostSelectionChanged >> wrap)
+                ]
+                []
+
         content =
-            model.atoms ++ [ NewLine ] |> lines |> List.map (viewLine wrap model)
+            callInputGhost :: (model.atoms ++ [ NewLine ] |> lines |> List.map (viewLine wrap model))
+
+        selection =
+            model.selection
+
+        ( ( selectedStyle, styleEnabled ), ( selectedTransform, transformEnabled ) ) =
+            let
+                selected =
+                    model.atoms |> List.drop selection.start |> List.take (selection.end - selection.start)
+
+                allSame parts =
+                    case parts |> List.filterMap identity of
+                        first :: rest ->
+                            if rest |> List.all ((==) first) then
+                                Just first
+
+                            else
+                                Nothing
+
+                        [] ->
+                            Nothing
+            in
+            ( ( selected |> List.map getStyle |> allSame, True )
+            , ( selected |> List.map getTransform |> allSame, selected |> List.any isSlot )
+            )
+
+        buttonFor icon value flipIf disableValue description act enabled =
+            let
+                ( action, fullIcon ) =
+                    if flipIf == Just value then
+                        ( act disableValue, [ icon, Icon.slash |> Icon.viewIcon ] )
+
+                    else
+                        ( act value, [ icon ] )
+
+                finalAction =
+                    if enabled then
+                        Just action
+
+                    else
+                        Nothing
+            in
+            IconButton.view (Icon.layers [] fullIcon) description finalAction
+
+        controls =
+            Html.div [ HtmlA.class "call-controls" ]
+                [ IconButton.view (Icon.plusCircle |> Icon.viewIcon)
+                    "Add Slot"
+                    (AddSlot |> wrap |> Just)
+                , Html.div []
+                    [ buttonFor (Icon.text [] "Aa")
+                        Transform.Capitalize
+                        selectedTransform
+                        Transform.None
+                        "Capitalize"
+                        (SetTransform >> wrap)
+                        transformEnabled
+                    , buttonFor (Icon.text [] "AA")
+                        Transform.UpperCase
+                        selectedTransform
+                        Transform.None
+                        "Uppercase"
+                        (SetTransform >> wrap)
+                        transformEnabled
+                    ]
+                , Html.div []
+                    [ buttonFor (Icon.italic |> Icon.viewIcon)
+                        Style.Em
+                        selectedStyle
+                        Style.None
+                        "Emphasize"
+                        (SetStyle >> wrap)
+                        styleEnabled
+                    ]
+                ]
+
+        ps =
+            problems model
+
+        problemsView =
+            if ps |> List.isEmpty then
+                Html.text ""
+
+            else
+                Html.ul [ HtmlA.class "problems" ]
+                    (ps |> List.map (\p -> Html.li [] [ Html.text p ]))
     in
-    Html.div [] [ Card.view Call.type_ Card.Immutable content Card.Face ]
+    Html.div []
+        [ controls
+        , Card.view Call.type_ Card.Immutable content Card.Face
+        , problemsView
+        ]
+
+
+onSelect : (Span -> msg) -> Html.Attribute msg
+onSelect wrap =
+    let
+        decoder =
+            Json.map2 (\s e -> span s e |> wrap)
+                (Json.at [ "target", "selectionStart" ] Json.int)
+                (Json.at [ "target", "selectionEnd" ] Json.int)
+    in
+    HtmlE.on "select" decoder
+
+
+atomToChar : Atom -> Char
+atomToChar atom =
+    case atom of
+        Letter char _ ->
+            char
+
+        Slot _ _ ->
+            '_'
+
+        NewLine ->
+            '\n'
+
+
+charToAtom : Char -> Atom
+charToAtom char =
+    case char of
+        '_' ->
+            Slot Transform.None Style.None
+
+        '\n' ->
+            NewLine
+
+        _ ->
+            Letter char Style.None
 
 
 problems : Model -> List String
@@ -326,18 +400,42 @@ problems model =
         [ "Calls must contain at least one slot." ]
 
 
-selectionOf : Position -> Position -> Maybe Span
-selectionOf start end =
-    if start /= end then
-        span start end |> Just
-
-    else
-        Nothing
-
-
 viewLine : (Msg -> msg) -> Model -> List ( Int, Atom ) -> Html msg
 viewLine wrap model line =
-    Html.p [] (line |> List.map (viewAtom wrap model))
+    Html.p [] (line |> clusterAtoms |> List.map (viewClusters (viewAtom wrap model)))
+
+
+clusterAtoms : List ( a, Atom ) -> List ( ( a, Atom ), List ( a, Atom ) )
+clusterAtoms line =
+    let
+        isCluster ( _, a ) ( _, b ) =
+            case a of
+                Letter c _ ->
+                    case b of
+                        Letter _ _ ->
+                            if c == ' ' then
+                                False
+
+                            else
+                                True
+
+                        _ ->
+                            False
+
+                _ ->
+                    False
+    in
+    line |> List.groupWhile isCluster
+
+
+viewClusters : (( Int, Atom ) -> Html msg) -> ( ( Int, Atom ), List ( Int, Atom ) ) -> Html msg
+viewClusters v ( single, rest ) =
+    case rest of
+        [] ->
+            v single
+
+        _ ->
+            Html.span [] (single :: rest |> List.map v)
 
 
 viewAtom : (Msg -> msg) -> Model -> ( Int, Atom ) -> Html msg
@@ -348,26 +446,64 @@ viewAtom wrap model ( position, atom ) =
             , position |> Leave |> wrap |> HtmlE.onMouseLeave
             , position |> EndSelection |> wrap |> HtmlE.onMouseUp
             , HtmlA.classList
-                [ ( "cursor", model.cursor == position )
-                , ( "selected", model.selection |> Maybe.map (inSpan position) |> Maybe.withDefault False )
+                [ ( "cursor", model.selection == Span position position )
+                , ( "selected", model.selection |> inSpan position )
                 ]
             ]
     in
     case atom of
-        Letter char ->
-            Html.span
+        Letter char style ->
+            Style.toNode style
                 ([ position |> StartSelection |> wrap |> HtmlE.onMouseDown ] ++ attrs)
                 [ char |> String.fromChar |> Html.text ]
 
-        Slot _ _ ->
+        Slot transform style ->
             let
                 slotAttrs =
-                    [ HtmlA.class "slot empty", position |> StartMoving |> wrap |> HtmlE.onMouseDown ]
+                    HtmlA.class "slot empty"
+                        :: (position |> StartMoving |> wrap |> HtmlE.onMouseDown)
+                        :: Transform.toAttributes transform
             in
-            Html.span (slotAttrs ++ attrs) []
+            Style.toNode style (slotAttrs ++ attrs) []
 
         NewLine ->
             Html.span ([ HtmlA.class "spacer" ] ++ attrs) []
+
+
+getStyle : Atom -> Maybe Style
+getStyle atom =
+    case atom of
+        Letter _ s ->
+            Just s
+
+        Slot _ s ->
+            Just s
+
+        _ ->
+            Nothing
+
+
+setStyle : Style -> Atom -> Atom
+setStyle style atom =
+    case atom of
+        Letter c _ ->
+            Letter c style
+
+        Slot t _ ->
+            Slot t style
+
+        _ ->
+            atom
+
+
+getTransform : Atom -> Maybe Transform
+getTransform atom =
+    case atom of
+        Slot t _ ->
+            Just t
+
+        _ ->
+            Nothing
 
 
 span : Position -> Position -> Span
@@ -382,21 +518,6 @@ span a b =
 inSpan : Position -> Span -> Bool
 inSpan position { start, end } =
     position >= start && position < end
-
-
-keyDecoder : Json.Decoder Key
-keyDecoder =
-    Json.map toKey (Json.field "key" Json.string)
-
-
-toKey : String -> Key
-toKey string =
-    case String.uncons string of
-        Just ( char, "" ) ->
-            Character char
-
-        _ ->
-            Control string
 
 
 isSlot : Atom -> Bool

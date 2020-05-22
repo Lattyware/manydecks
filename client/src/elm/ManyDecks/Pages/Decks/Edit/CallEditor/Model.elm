@@ -6,12 +6,9 @@ import Cards.Call.Transform exposing (Transform)
 
 type alias Model =
     { atoms : List Atom
-    , selection : Maybe Span
+    , selection : Span
     , selecting : Maybe Position
     , moving : Maybe Position
-    , hover : Maybe Position
-    , cursor : Position
-    , styled : List ( Span, Style )
     , control : Bool
     }
 
@@ -27,7 +24,7 @@ type alias Span =
 
 
 type Atom
-    = Letter Char
+    = Letter Char Style
     | Slot Transform Style
     | NewLine
 
@@ -38,11 +35,8 @@ type Msg
     | StartSelection Position
     | EndSelection Position
     | StartMoving Position
-    | KeyDown Key
-    | KeyUp Key
     | AddSlot
-
-
-type Key
-    = Character Char
-    | Control String
+    | SetStyle Style
+    | SetTransform Transform
+    | UpdateFromGhost String
+    | GhostSelectionChanged Span

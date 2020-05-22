@@ -93,7 +93,7 @@ subscriptions model =
 
 
 onUrlRequest : Browser.UrlRequest -> Msg
-onUrlRequest urlRequest =
+onUrlRequest _ =
     NoOp
 
 
@@ -114,10 +114,10 @@ update msg model =
         SetError error ->
             case error of
                 Error.Transient Error.AuthFailure ->
-                    ( model, Route.redirectTo Login model.navKey )
+                    ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
 
                 Error.User Error.NotAuthenticated ->
-                    ( model, Route.redirectTo Login model.navKey )
+                    ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
 
                 _ ->
                     ( { model | error = Just error }, Cmd.none )

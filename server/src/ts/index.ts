@@ -99,7 +99,7 @@ const main = async (): Promise<void> => {
   app.delete("/api/users", async (req, res) => {
     const claims = auth.validate(req.body.token);
     await store.deleteUser(claims.sub);
-    res.status(HttpStatus.OK);
+    res.status(HttpStatus.OK).json({});
   });
 
   app.get("/api/decks/:deckCode", async (req, res) => {
@@ -156,7 +156,7 @@ const main = async (): Promise<void> => {
     const id = Code.decode(req.params.deckCode);
     const claims = auth.validate(req.body.token);
     await store.deleteDeck(id, claims.sub);
-    res.status(HttpStatus.OK);
+    res.status(HttpStatus.OK).json({});
   });
 
   app.use(

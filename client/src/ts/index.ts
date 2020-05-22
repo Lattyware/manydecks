@@ -69,6 +69,25 @@ const main = async () => {
       }
     }
   });
+
+  app.ports.setCallInputGhostSelection.subscribe(({ start, end }) => {
+    const element = document.getElementById("call-input-ghost");
+    if (element !== null) {
+      const textarea = element as HTMLTextAreaElement;
+      textarea.focus();
+      textarea.setSelectionRange(start, end);
+      if (!element.oninput) {
+        const updateSelection = () => {
+          app.ports.getCallInputGhostSelection.send({
+            start: textarea.selectionStart,
+            end: textarea.selectionEnd,
+          });
+        };
+        element.oninput = updateSelection;
+        element.onkeydown = updateSelection;
+      }
+    }
+  });
 };
 
 main().catch(console.error);

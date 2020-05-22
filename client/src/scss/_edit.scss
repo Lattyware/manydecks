@@ -123,6 +123,23 @@
     flex-grow: 1;
     height: 1.2em;
   }
+
+  #call-input-ghost {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+
+    z-index: -100;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.call-controls {
+  display: flex;
+  justify-content: space-between;
 }
 
 .editing-controls {

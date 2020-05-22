@@ -2,6 +2,7 @@ port module ManyDecks.Ports exposing (..)
 
 import Json.Decode as Json
 import ManyDecks.Auth as Auth
+import ManyDecks.Pages.Decks.Edit.CallEditor.Model exposing (Span)
 
 
 port tryGoogleAuth : String -> Cmd msg
@@ -20,3 +21,9 @@ port storeAuth : Maybe Auth.Auth -> Cmd msg
 
 
 port copy : String -> Cmd msg
+
+
+port setCallInputGhostSelection : Span -> Cmd msg
+
+
+port getCallInputGhostSelection : (Span -> msg) -> Sub msg

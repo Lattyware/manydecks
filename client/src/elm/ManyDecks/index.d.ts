@@ -9,6 +9,11 @@ interface Flags {
   auth?: Auth;
 }
 
+interface Span {
+  start: number;
+  end: number;
+}
+
 type GoogleAuthResult = { code: string } | { error: string };
 
 export interface InboundPort<T> {
@@ -29,6 +34,8 @@ export namespace Elm {
         json5Decoded: OutboundPort<object>;
         storeAuth: InboundPort<Auth | undefined>;
         copy: InboundPort<string>;
+        setCallInputGhostSelection: InboundPort<Span>;
+        getCallInputGhostSelection: OutboundPort<Span>;
       };
     }
     export function init(options: {

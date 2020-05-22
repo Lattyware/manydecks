@@ -87,7 +87,9 @@ update msg model =
                 newDecks =
                     model.decks |> Maybe.map (List.filter (\d -> d.code /= code))
             in
-            ( { model | decks = newDecks, edit = Nothing }, GlobalRoute.redirectTo (Route.Decks Route.List) model.navKey )
+            ( { model | decks = newDecks, edit = Nothing }
+            , GlobalRoute.redirectTo (Route.Decks Route.List) model.navKey
+            )
 
         Save code patch ->
             case model.auth of

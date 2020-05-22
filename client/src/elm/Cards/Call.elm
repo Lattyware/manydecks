@@ -110,12 +110,9 @@ encode (Call call) =
 editor : Call -> Editor.Model
 editor (Call lines) =
     { atoms = lines |> List.map (List.concatMap partToAtoms) |> List.intersperse [ NewLine ] |> List.concat
-    , selection = Nothing
+    , selection = { start = 0, end = 0 }
     , selecting = Nothing
     , moving = Nothing
-    , hover = Nothing
-    , cursor = 0
-    , styled = []
     , control = False
     }
 
@@ -124,7 +121,7 @@ partToAtoms : Part -> List Editor.Atom
 partToAtoms part =
     case part of
         Part.Text text style ->
-            text |> String.toList |> List.map Editor.Letter
+            text |> String.toList |> List.map (\c -> Editor.Letter c style)
 
         Part.Slot transform style ->
             [ Editor.Slot transform style ]
@@ -151,10 +148,10 @@ atomsToParts ( f, r ) =
 
         group a b =
             case a of
-                Letter _ ->
+                Letter _ styleA ->
                     case b of
-                        Letter _ ->
-                            True
+                        Letter _ styleB ->
+                            styleA == styleB
 
                         _ ->
                             False
@@ -164,7 +161,7 @@ atomsToParts ( f, r ) =
 
         toChar atom =
             case atom of
-                Letter char ->
+                Letter char _ ->
                     Just char
 
                 _ ->
@@ -172,11 +169,11 @@ atomsToParts ( f, r ) =
 
         toPart ( first, rest ) =
             case first of
-                Letter _ ->
+                Letter _ style ->
                     (first :: rest)
                         |> List.filterMap toChar
                         |> String.fromList
-                        |> (\t -> Part.Text t Style.None |> Just)
+                        |> (\t -> Part.Text t style |> Just)
 
                 Slot transform style ->
                     Part.Slot transform style |> Just

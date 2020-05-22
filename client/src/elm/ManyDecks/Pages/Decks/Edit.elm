@@ -75,15 +75,19 @@ update msg model =
 
                 UpdateCall callEditorMsg ->
                     let
-                        editing =
+                        ( editing, cmd ) =
                             case model.editing of
                                 Just (CallEditor index old m) ->
-                                    m |> CallEditor.update callEditorMsg |> CallEditor index old |> Just
+                                    let
+                                        ( e, eCmd ) =
+                                            m |> CallEditor.update callEditorMsg
+                                    in
+                                    ( e |> CallEditor index old |> Just, eCmd )
 
                                 other ->
-                                    other
+                                    ( other, Cmd.none )
                     in
-                    ( { model | editing = editing }, Cmd.none )
+                    ( { model | editing = editing }, cmd )
 
         StartEditing cardEditor ->
             let
@@ -217,18 +221,13 @@ view code model =
                         d =
                             IconButton.view (Icon.trash |> Icon.viewIcon) "Delete" (Delete |> wrap |> Just)
 
-                        ( problems, addSlot ) =
+                        problems =
                             case callEditor of
                                 Just editorModel ->
-                                    ( CallEditor.problems editorModel
-                                    , IconButton.view (Icon.plusCircle |> Icon.viewIcon)
-                                        "Add Slot"
-                                        (CallEditor.AddSlot |> UpdateCall |> Edit |> wrap |> Just)
-                                        |> Just
-                                    )
+                                    CallEditor.problems editorModel
 
                                 _ ->
-                                    ( [], Nothing )
+                                    []
 
                         noProblems =
                             List.isEmpty problems
@@ -242,24 +241,12 @@ view code model =
 
                         s =
                             IconButton.view (Icon.save |> Icon.viewIcon) "Save" sAction
-
-                        controlsContents =
-                            [ Just d, addSlot, Just s ] |> List.filterMap identity
-
-                        problemsView =
-                            if noProblems then
-                                Html.text ""
-
-                            else
-                                Html.ul [ HtmlA.class "problems" ]
-                                    (problems |> List.map (\p -> Html.li [] [ Html.text p ]))
                     in
                     [ Html.div [ HtmlA.class "overlay" ]
                         [ Html.div [ HtmlA.class "background", EndEditing |> wrap |> HtmlE.onClick ] []
                         , Card.view []
                             [ Html.div [ HtmlA.class "editing" ] c
-                            , problemsView
-                            , Html.div [ HtmlA.class "editing-controls" ] controlsContents
+                            , Html.div [ HtmlA.class "editing-controls" ] [ d, s ]
                             ]
                         ]
                     ]
