@@ -2,6 +2,7 @@ module ManyDecks.Pages.Decks.Edit.Model exposing
     ( CardChange(..)
     , CardEditor(..)
     , Change(..)
+    , Direction(..)
     , EditError(..)
     , Model
     , Msg(..)
@@ -38,7 +39,8 @@ type Msg
 type alias Model =
     { deck : Deck
     , editing : Maybe CardEditor
-    , changes : List Change
+    , changes : List ( Change, Direction )
+    , undoStack : List Change
     , redoStack : List Change
     , errors : List EditError
     , deletionEnabled : Bool
@@ -58,6 +60,11 @@ type Change
     | ResponseChange (CardChange Response)
 
 
+type Direction
+    = Perform
+    | Revert
+
+
 type CardChange value
     = Add Int value
     | Replace Int value value
@@ -65,4 +72,4 @@ type CardChange value
 
 
 type EditError
-    = ChangeError String (List Change) Bool
+    = ChangeError String Change Direction

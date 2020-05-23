@@ -31,7 +31,6 @@ type Atom
 
 type Msg
     = Enter Position
-    | Leave Position
     | StartSelection Position
     | EndSelection Position
     | StartMoving Position

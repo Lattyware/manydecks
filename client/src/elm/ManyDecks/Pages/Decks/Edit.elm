@@ -19,7 +19,6 @@ import List.Extra as List
 import ManyDecks.Messages as Global
 import ManyDecks.Pages.Decks.Deck as Deck
 import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
-import ManyDecks.Pages.Decks.Edit.CallEditor.Model as CallEditor
 import ManyDecks.Pages.Decks.Edit.Change as Change
 import ManyDecks.Pages.Decks.Edit.Import as Import
 import ManyDecks.Pages.Decks.Edit.Import.Model as Import
@@ -37,6 +36,7 @@ init deck =
     { deck = deck
     , editing = Nothing
     , changes = []
+    , undoStack = []
     , redoStack = []
     , errors = []
     , deletionEnabled = False
@@ -102,39 +102,53 @@ update msg model =
         Delete ->
             case model.editing of
                 Just (CallEditor index old _) ->
-                    ( model |> applyChanges [ Remove index old |> CallChange ], Cmd.none )
+                    ( model |> applyChange (Remove index old |> CallChange), Cmd.none )
 
                 Just (ResponseEditor index old _) ->
-                    ( model |> applyChanges [ Remove index old |> ResponseChange ], Cmd.none )
+                    ( model |> applyChange (Remove index old |> ResponseChange), Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
         ApplyChange change ->
-            ( model |> applyChanges [ change ], Cmd.none )
+            ( model |> applyChange change, Cmd.none )
 
         Undo ->
-            case model.changes |> List.unconsLast of
-                Just ( last, rest ) ->
-                    case model.deck |> Change.undo [ last ] of
+            case model.undoStack of
+                first :: rest ->
+                    case model.deck |> Change.apply [ first ] Revert of
                         Ok deck ->
-                            ( { model | changes = rest, deck = deck, redoStack = last :: model.redoStack }, Cmd.none )
+                            ( { model
+                                | changes = model.changes ++ [ ( first, Revert ) ]
+                                , undoStack = rest
+                                , deck = deck
+                                , redoStack = first :: model.redoStack
+                              }
+                            , Cmd.none
+                            )
 
                         Err error ->
-                            ( addChangeError [ last ] error True model, Cmd.none )
+                            ( addChangeError first error Revert model, Cmd.none )
 
-                Nothing ->
+                [] ->
                     ( model, Cmd.none )
 
         Redo ->
             case model.redoStack of
                 first :: rest ->
-                    case model.deck |> Change.apply [ first ] of
+                    case model.deck |> Change.apply [ first ] Perform of
                         Ok deck ->
-                            ( { model | changes = model.changes ++ [ first ], deck = deck, redoStack = rest }, Cmd.none )
+                            ( { model
+                                | changes = model.changes ++ [ ( first, Perform ) ]
+                                , undoStack = first :: model.undoStack
+                                , deck = deck
+                                , redoStack = rest
+                              }
+                            , Cmd.none
+                            )
 
                         Err error ->
-                            ( addChangeError [ first ] error False model, Cmd.none )
+                            ( addChangeError first error Perform model, Cmd.none )
 
                 [] ->
                     ( model, Cmd.none )
@@ -170,7 +184,7 @@ update msg model =
                                         Import.ImportedResponse r ->
                                             Add (m.deck.responses |> List.length) r |> ResponseChange
                             in
-                            applyChanges [ change ] m
+                            applyChange change m
 
                         newModel =
                             cards |> List.foldl toChangeAndApply model
@@ -202,13 +216,18 @@ view code model =
 
         Nothing ->
             let
+                source =
+                    { name = model.deck.name, url = Nothing }
+
                 viewResponse r =
-                    [ Response.view (UpdateResponse >> Edit >> wrap |> GameCard.Mutable) GameCard.Face r ]
+                    [ Response.view (UpdateResponse >> Edit >> wrap |> GameCard.Mutable) GameCard.Face source r ]
 
                 editing editor =
                     case editor of
                         CallEditor _ _ editorModel ->
-                            inEditing [ CallEditor.view (UpdateCall >> Edit >> wrap) editorModel ] (Just editorModel) |> Just
+                            inEditing [ CallEditor.view (UpdateCall >> Edit >> wrap) source editorModel ]
+                                (Just editorModel)
+                                |> Just
 
                         ResponseEditor _ _ new ->
                             inEditing (viewResponse new) Nothing |> Just
@@ -252,7 +271,7 @@ view code model =
                     ]
 
                 undoAction =
-                    if List.isEmpty model.changes then
+                    if List.isEmpty model.undoStack then
                         Nothing
 
                     else
@@ -270,17 +289,15 @@ view code model =
                         Nothing
 
                     else
-                        Decks.Save code (model.changes |> Change.toPatch) |> Global.DecksMsg |> Just
+                        let
+                            toPatch ( c, d ) =
+                                Change.toPatch d [ c ]
+                        in
+                        Decks.Save code (model.changes |> List.map toPatch |> List.concat) |> Global.DecksMsg |> Just
 
                 actions =
                     Html.div [ HtmlA.class "actions" ]
                         [ Button.view
-                            Button.Standard
-                            Button.Padded
-                            "Back"
-                            (Icon.arrowLeft |> Icon.viewIcon |> Just)
-                            (Decks.BackFromEdit |> Global.DecksMsg |> Just)
-                        , Button.view
                             Button.Standard
                             Button.Padded
                             "Import"
@@ -314,7 +331,7 @@ view code model =
                         [ Html.div [ HtmlA.class "overlay" ]
                             [ Html.div [ HtmlA.class "background" ] []
                             , Card.view [ HtmlA.class "errors" ]
-                                [ Html.ul [] (model.errors |> List.map (viewError model.deck)) ]
+                                [ Html.ul [] (model.errors |> List.map viewError) ]
                             ]
                         ]
 
@@ -367,13 +384,13 @@ subscriptions model =
             Sub.none
 
 
-viewError : Deck -> EditError -> Html Global.Msg
-viewError deck error =
+viewError : EditError -> Html Global.Msg
+viewError error =
     let
         content =
             case error of
-                ChangeError e changes undoing ->
-                    [ Change.asContextForError e changes undoing ]
+                ChangeError e c direction ->
+                    [ Change.asContextForError e c direction ]
     in
     Html.li [ HtmlA.class "error" ] content
 
@@ -419,7 +436,7 @@ calls cs =
 
 call : Int -> Call -> Html Global.Msg
 call index c =
-    Html.li [ CallEditor index c (Call.editor c) |> StartEditing |> wrap |> HtmlE.onClick ]
+    Html.li [ CallEditor index c (CallEditor.init c) |> StartEditing |> wrap |> HtmlE.onClick ]
         [ c |> Call.toString "⏎" [] |> Html.text ]
 
 
@@ -451,30 +468,36 @@ endEditing model =
     case model.editing of
         Just finished ->
             let
-                changes =
+                change =
                     finished |> Change.fromEditor
             in
-            case changes of
-                Ok cs ->
-                    applyChanges cs model
+            case change of
+                Ok (Just c) ->
+                    model |> applyChange c
 
-                Err _ ->
+                _ ->
                     model
 
         Nothing ->
             model
 
 
-applyChanges : List Change -> Model -> Model
-applyChanges changes model =
-    case model.deck |> Change.apply changes of
+applyChange : Change -> Model -> Model
+applyChange change model =
+    case model.deck |> Change.apply [ change ] Perform of
         Ok deck ->
-            { model | changes = model.changes ++ changes, deck = deck, editing = Nothing, redoStack = [] }
+            { model
+                | changes = model.changes ++ [ ( change, Perform ) ]
+                , undoStack = change :: model.undoStack
+                , deck = deck
+                , editing = Nothing
+                , redoStack = []
+            }
 
         Err error ->
-            addChangeError changes error False model
+            addChangeError change error Perform model
 
 
-addChangeError : List Change -> String -> Bool -> Model -> Model
-addChangeError changes error undo model =
-    { model | errors = ChangeError error changes undo :: model.errors }
+addChangeError : Change -> String -> Direction -> Model -> Model
+addChangeError change error direction model =
+    { model | errors = ChangeError error change direction :: model.errors }

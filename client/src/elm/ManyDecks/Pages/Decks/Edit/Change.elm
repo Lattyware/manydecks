@@ -3,7 +3,6 @@ module ManyDecks.Pages.Decks.Edit.Change exposing
     , asContextForError
     , fromEditor
     , toPatch
-    , undo
     )
 
 import Cards.Call as Call
@@ -16,64 +15,61 @@ import Json.Encode as Json
 import Json.Patch
 import Json.Patch.Invertible as Json
 import Json.Pointer as Json
+import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
 import ManyDecks.Pages.Decks.Edit.Model exposing (..)
 
 
-apply : List Change -> Deck -> Result String Deck
-apply changes deck =
-    applyPatchToDeck (changes |> toPatch) deck
+apply : List Change -> Direction -> Deck -> Result String Deck
+apply changes direction deck =
+    applyPatchToDeck (changes |> toPatch direction) deck
 
 
-undo : List Change -> Deck -> Result String Deck
-undo changes deck =
-    applyPatchToDeck (changes |> toPatch |> Json.invert) deck
-
-
-toPatch : List Change -> Json.Patch
-toPatch changes =
-    changes |> List.map toOperation
-
-
-asContextForError : String -> List Change -> Bool -> Html msg
-asContextForError error changes undoing =
+toPatch : Direction -> List Change -> Json.Patch
+toPatch direction changes =
     let
-        u =
-            if undoing then
-                Json.invert
+        directionOp =
+            case direction of
+                Perform ->
+                    identity
 
-            else
-                identity
+                Revert ->
+                    Json.invert
     in
+    changes |> List.map toOperation |> directionOp
+
+
+asContextForError : String -> Change -> Direction -> Html msg
+asContextForError error change direction =
     Html.div [ HtmlA.class "error-with-context" ]
         [ Html.span [ HtmlA.class "message" ] [ Html.text error ]
         , Html.span [ HtmlA.class "change" ]
-            [ changes |> toPatch |> u |> Json.toPatch |> Json.Patch.encoder |> Json.encode 2 |> Html.text ]
+            [ [ change ] |> toPatch direction |> Json.toPatch |> Json.Patch.encoder |> Json.encode 2 |> Html.text ]
         ]
 
 
-fromEditor : CardEditor -> Result String (List Change)
+fromEditor : CardEditor -> Result String (Maybe Change)
 fromEditor editor =
     let
         ifChanged wrap index old new =
             if old /= new then
-                [ Replace index old new |> wrap ]
+                Replace index old new |> wrap |> Just
 
             else
-                []
+                Nothing
     in
     case editor of
         CallEditor index old new ->
-            Call.editorToCall new |> Result.map (ifChanged CallChange index old)
+            CallEditor.editorToCall new |> Result.map (ifChanged CallChange index old)
 
         ResponseEditor index old new ->
             ifChanged ResponseChange index old new |> Ok
 
         NameEditor old new ->
             if old /= new then
-                [ ChangeName old new ] |> Ok
+                ChangeName old new |> Just |> Ok
 
             else
-                [] |> Ok
+                Nothing |> Ok
 
 
 applyPatchToDeck : Json.Patch -> Deck -> Result String Deck

@@ -206,28 +206,29 @@ generalNav model =
     case model.auth of
         Just auth ->
             let
-                viewProfile =
-                    if model.route == Profile then
-                        ChangePage (Decks DecksRoute.List)
+                changePageIfNot page =
+                    if model.route == page then
+                        Nothing
 
                     else
-                        ChangePage Profile
+                        page |> ChangePage |> Just
             in
             Html.nav []
-                [ Html.div [ HtmlA.id "sign-out" ]
-                    [ Button.view Button.Standard
-                        Button.Padded
-                        "Sign Out"
-                        (Icon.signOutAlt |> Icon.viewIcon |> Just)
-                        (Login.SignOut |> LoginMsg |> Just)
-                    ]
-                , Html.div [ HtmlA.id "view-profile" ]
-                    [ Button.view Button.Standard
-                        Button.Padded
-                        (auth.name ++ "'s Profile")
-                        (Icon.userCircle |> Icon.viewIcon |> Just)
-                        (Just viewProfile)
-                    ]
+                [ Button.view Button.Standard
+                    Button.Padded
+                    "Sign Out"
+                    (Icon.signOutAlt |> Icon.viewIcon |> Just)
+                    (Login.SignOut |> LoginMsg |> Just)
+                , Button.view Button.Standard
+                    Button.Padded
+                    "Decks"
+                    (Icon.list |> Icon.viewIcon |> Just)
+                    (DecksRoute.List |> Decks |> changePageIfNot)
+                , Button.view Button.Standard
+                    Button.Padded
+                    (auth.name ++ "'s Profile")
+                    (Icon.userCircle |> Icon.viewIcon |> Just)
+                    (Profile |> changePageIfNot)
                 ]
 
         Nothing ->

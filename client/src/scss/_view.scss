@@ -13,6 +13,16 @@
       align-self: inherit;
     }
 
+    .owner-actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+
+      mwc-button {
+        margin: 0.5em 0;
+      }
+    }
+
     .details {
       display: flex;
       flex-wrap: wrap;
@@ -58,7 +68,7 @@
     align-items: center;
     align-content: center;
 
-    li {
+    > li {
       margin: 0.5em;
     }
   }

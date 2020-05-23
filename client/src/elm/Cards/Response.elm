@@ -31,8 +31,8 @@ init =
     Response ""
 
 
-view : Card.Mutability Response msg -> Card.Side -> Response -> Html msg
-view mutability side (Response text) =
+view : Card.Mutability Response msg -> Card.Side -> Card.Source -> Response -> Html msg
+view mutability side source (Response text) =
     let
         content =
             case mutability of
@@ -48,7 +48,7 @@ view mutability side (Response text) =
                         []
                     ]
     in
-    Card.view type_ mutability content side
+    Card.view type_ mutability source content [] side
 
 
 toString : Response -> String

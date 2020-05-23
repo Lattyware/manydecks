@@ -63,9 +63,6 @@ update msg model =
                 Nothing ->
                     ( model, GlobalRoute.redirectTo (Route.Decks (Route.Edit code)) model.navKey )
 
-        BackFromEdit ->
-            ( model, GlobalRoute.redirectTo (Route.Decks Route.List) model.navKey )
-
         Delete code ->
             case model.auth of
                 Just auth ->

@@ -1,11 +1,15 @@
 module ManyDecks.Pages.Decks.Edit.CallEditor exposing
-    ( problems
+    ( editorToCall
+    , init
+    , problems
     , subscriptions
     , update
     , view
     )
 
-import Cards.Call as Call
+import Cards.Call as Call exposing (Call(..))
+import Cards.Call.Part as Part
+import Cards.Call.Part.Model as Part exposing (Part)
 import Cards.Call.Style as Style exposing (Style)
 import Cards.Call.Transform as Transform exposing (Transform)
 import Cards.Card as Card
@@ -18,9 +22,20 @@ import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as Json
 import List.Extra as List
+import ManyDecks.Pages.Decks.Deck as Call
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model exposing (..)
 import ManyDecks.Ports as Ports
 import Material.IconButton as IconButton
+
+
+init : Call -> Model
+init (Call parts) =
+    { atoms = parts |> List.map (List.concatMap partToAtoms) |> List.intersperse [ NewLine ] |> List.concat
+    , selection = { start = 0, end = 0 }
+    , selecting = Nothing
+    , moving = Nothing
+    , control = False
+    }
 
 
 deleteSpan : Span -> Model -> Model
@@ -76,9 +91,6 @@ update msg model =
                                 model.selection
             in
             ( { model | selection = selection }, Ports.setCallInputGhostSelection selection )
-
-        Leave position ->
-            ( model, Cmd.none )
 
         StartSelection position ->
             let
@@ -242,8 +254,8 @@ lines =
         >> List.map (\( f, r ) -> f :: r)
 
 
-view : (Msg -> msg) -> Model -> Html msg
-view wrap model =
+view : (Msg -> msg) -> Card.Source -> Model -> Html msg
+view wrap source model =
     let
         stringVersion =
             model.atoms
@@ -346,10 +358,20 @@ view wrap model =
             else
                 Html.ul [ HtmlA.class "problems" ]
                     (ps |> List.map (\p -> Html.li [] [ Html.text p ]))
+
+        slotCount atom =
+            if isSlot atom then
+                1
+
+            else
+                0
+
+        instructions =
+            model.atoms |> List.map slotCount |> List.sum |> Call.defaultInstructions
     in
     Html.div []
         [ controls
-        , Card.view Call.type_ Card.Immutable content Card.Face
+        , Card.view Call.type_ Card.Immutable source content (Call.viewInstructions instructions) Card.Face
         , problemsView
         ]
 
@@ -443,7 +465,6 @@ viewAtom wrap model ( position, atom ) =
     let
         attrs =
             [ position |> Enter |> wrap |> HtmlE.onMouseEnter
-            , position |> Leave |> wrap |> HtmlE.onMouseLeave
             , position |> EndSelection |> wrap |> HtmlE.onMouseUp
             , HtmlA.classList
                 [ ( "cursor", model.selection == Span position position )
@@ -528,3 +549,74 @@ isSlot atom =
 
         _ ->
             False
+
+
+partToAtoms : Part -> List Atom
+partToAtoms part =
+    let
+        textToAtoms ( text, style ) =
+            text |> String.toList |> List.map (\c -> Letter c style)
+    in
+    case part of
+        Part.Text text style ->
+            textToAtoms ( text, style )
+
+        Part.Slot transform style ->
+            [ Slot transform style ]
+
+
+editorToCall : Model -> Result String Call
+editorToCall { atoms } =
+    let
+        parts =
+            atoms |> List.groupWhile (\_ b -> b /= NewLine) |> List.map atomsToParts
+    in
+    if parts |> List.any (List.any Part.isSlot) then
+        parts |> Call |> Ok
+
+    else
+        "Calls must contain at least one slot." |> Err
+
+
+atomsToParts : ( Atom, List Atom ) -> List Part
+atomsToParts ( f, r ) =
+    let
+        atoms =
+            f :: r
+
+        group a b =
+            case a of
+                Letter _ styleA ->
+                    case b of
+                        Letter _ styleB ->
+                            styleA == styleB
+
+                        _ ->
+                            False
+
+                _ ->
+                    False
+
+        toChar atom =
+            case atom of
+                Letter char _ ->
+                    Just char
+
+                _ ->
+                    Nothing
+
+        toPart ( first, rest ) =
+            case first of
+                Letter _ style ->
+                    (first :: rest)
+                        |> List.filterMap toChar
+                        |> String.fromList
+                        |> (\t -> Part.Text t style |> Just)
+
+                Slot transform style ->
+                    Part.Slot transform style |> Just
+
+                _ ->
+                    Nothing
+    in
+    atoms |> List.groupWhile group |> List.filterMap toPart

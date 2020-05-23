@@ -11,9 +11,12 @@ import Html.Attributes as HtmlA
 import ManyDecks.Auth exposing (Auth)
 import ManyDecks.Messages as Global
 import ManyDecks.Meta as Meta
+import ManyDecks.Model as Route
 import ManyDecks.Pages.Decks.Deck as Deck
 import ManyDecks.Pages.Decks.Edit.Model as Edit
 import ManyDecks.Pages.Decks.Messages as Decks
+import ManyDecks.Pages.Decks.Route as Decks
+import ManyDecks.Route as Route
 import Material.Button as Button
 import Material.Card as MaterialCard
 
@@ -24,21 +27,31 @@ view code auth model =
         viewAuthor author =
             Html.span [ HtmlA.class "author" ] [ Html.text "By ", Html.text author ]
 
-        editButton _ =
+        li content =
+            Html.li [] [ content ]
+
+        source =
+            { name = model.deck.name, url = code |> Decks.View |> Route.Decks |> Route.toUrl |> Just }
+
+        responses =
+            model.deck.responses |> List.map (Response.view Card.Immutable Card.Face source >> li)
+
+        call c =
+            Call.view [] Card.Face source (c |> Call.slotCount |> Deck.defaultInstructions) c |> li
+
+        calls =
+            model.deck.calls |> List.map call
+
+        editButton =
             Button.view Button.Raised
                 Button.Padded
                 "Edit"
                 (Icon.pen |> Icon.viewIcon |> Just)
                 (Decks.EditDeck code (Just model.deck) |> Global.DecksMsg |> Just)
 
-        li content =
-            Html.li [] [ content ]
-
-        responses =
-            model.deck.responses |> List.map (Response.view Card.Immutable Card.Face >> li)
-
-        calls =
-            model.deck.calls |> List.map (Call.view [] Card.Face >> li)
+        ownerActions _ =
+            Html.div [ HtmlA.class "owner-actions" ]
+                [ editButton ]
     in
     [ MaterialCard.view [ HtmlA.class "page view" ]
         [ Html.div [ HtmlA.class "header" ]
@@ -64,7 +77,7 @@ view code auth model =
                         ]
                     ]
                 ]
-            , auth |> Maybe.map editButton |> Maybe.withDefault (Html.text "")
+            , auth |> Maybe.map ownerActions |> Maybe.withDefault (Html.text "")
             ]
         , Html.p [ HtmlA.class "massive-decks-ad" ]
             [ Html.text "You can play with this deck on "

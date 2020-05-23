@@ -60,14 +60,13 @@ nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
+  background-color: #00796b;
+  --mdc-theme-primary: #ffffff;
 
-#sign-out {
-  margin: 1em;
-}
-
-#view-profile {
-  margin: 1em;
+  > mwc-button {
+    align-self: inherit;
+    margin: 1em;
+  }
 }
 
 mwc-button {

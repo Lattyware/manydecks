@@ -67,16 +67,24 @@ decode =
             Json.succeed Slot
                 |> Json.optional "transform" Transform.decode Transform.None
                 |> Json.optional "style" Style.decode Style.None
+    in
+    Json.oneOf
+        [ decodeText |> Json.map (\( t, s ) -> Text t s)
+        , slot
+        ]
 
+
+decodeText : Json.Decoder ( String, Style )
+decodeText =
+    let
         styled =
-            Json.succeed Text
+            Json.succeed (\t s -> ( t, s ))
                 |> Json.required "text" Json.string
                 |> Json.optional "style" Style.decode Style.None
     in
     Json.oneOf
-        [ Json.string |> Json.map (\t -> Text t Style.None)
+        [ Json.string |> Json.map (\t -> ( t, Style.None ))
         , styled
-        , slot
         ]
 
 
@@ -108,8 +116,8 @@ encode part =
 isSlot : Part -> Bool
 isSlot part =
     case part of
-        Text string style ->
+        Text _ _ ->
             False
 
-        Slot transform style ->
+        Slot _ _ ->
             True

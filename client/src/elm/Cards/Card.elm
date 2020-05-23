@@ -1,6 +1,7 @@
 module Cards.Card exposing
     ( Mutability(..)
     , Side(..)
+    , Source
     , view
     )
 
@@ -19,8 +20,12 @@ type Side
     | Reverse
 
 
-view : Type value -> Mutability value msg -> List (Html msg) -> Side -> Html msg
-view type_ mutability content visibleSide =
+type alias Source =
+    { name : String, url : Maybe String }
+
+
+view : Type value -> Mutability value msg -> Source -> List (Html msg) -> List (Html msg) -> Side -> Html msg
+view type_ mutability source content meta visibleSide =
     let
         mutabilityClass =
             case mutability of
@@ -60,6 +65,18 @@ view type_ mutability content visibleSide =
                 [ Html.div [ HtmlA.class "primary-content" ] primary
                 , Html.div [ HtmlA.class "secondary-content" ] secondary
                 ]
+
+        sourceContent =
+            let
+                wrap =
+                    case source.url of
+                        Just url ->
+                            \t -> Html.a [ HtmlA.target "blank_", HtmlA.href url ] [ t ]
+
+                        Nothing ->
+                            identity
+            in
+            Html.span [ HtmlA.class "source" ] [ Html.span [ HtmlA.class "name" ] [ source.name |> Html.text |> wrap ] ]
     in
     Html.div
         [ HtmlA.classList
@@ -70,5 +87,5 @@ view type_ mutability content visibleSide =
             ]
         ]
         [ viewSide Reverse [ Html.text "Massive", Html.text "Decks" ] []
-        , viewSide Face content []
+        , viewSide Face content (sourceContent :: meta)
         ]

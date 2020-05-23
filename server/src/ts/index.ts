@@ -209,7 +209,7 @@ const main = async (): Promise<void> => {
     const id = Code.decode(req.params.deckCode);
     const claims = auth.validate(req.body.token);
     await store.deleteDeck(id, claims.sub);
-    res.status(HttpStatus.OK).json({});
+    res.status(HttpStatus.OK).json(req.params.deckCode);
   });
 
   app.use(

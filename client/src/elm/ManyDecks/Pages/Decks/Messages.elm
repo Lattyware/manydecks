@@ -15,7 +15,6 @@ type Msg
     | NewDeck Deck
     | EditDeck Deck.Code (Maybe Deck)
     | ViewDeck Deck.Code (Maybe Deck)
-    | BackFromEdit
     | Save Deck.Code Json.Patch
     | DeckSaved Deck.Code Deck.Versioned
     | Delete Deck.Code

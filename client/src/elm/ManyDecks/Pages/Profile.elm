@@ -50,7 +50,10 @@ update msg model =
                     ( model, Cmd.none )
 
         ProfileDeleted ->
-            ( { model | auth = Nothing }, Route.redirectTo (Login Nothing) model.navKey )
+            ( { model | auth = Nothing }
+            , Cmd.batch
+                [ Ports.storeAuth Nothing, Route.redirectTo (Login Nothing) model.navKey ]
+            )
 
         Backup ->
             case model.auth of

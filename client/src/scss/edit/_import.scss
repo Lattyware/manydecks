@@ -9,4 +9,9 @@
     flex-grow: 1;
     height: 20em;
   }
+
+  .actions {
+    display: flex;
+    justify-content: space-between;
+  }
 }

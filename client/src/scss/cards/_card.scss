@@ -64,7 +64,7 @@
         .slot {
           display: inline flex;
           flex-grow: 1;
-          flex-basis: 2em;
+          flex-basis: 3em;
           max-width: 14em;
 
           &.filled {
@@ -168,19 +168,30 @@
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+
+          &,
+          > a {
+            color: var(--fg);
+          }
         }
       }
 
       .instructions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: flex-end;
         list-style: none;
         padding: 0;
         margin: 0;
-        font-size: 1.4em;
+        font-size: 1.2em;
 
-        li {
+        > li {
           display: flex;
           justify-content: flex-end;
           align-items: center;
+          margin-top: 0.2em;
+          padding: 0;
         }
       }
     }

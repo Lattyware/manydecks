@@ -5,6 +5,7 @@ module ManyDecks.Pages.Decks.Deck exposing
     , code
     , codeDecoder
     , codeToString
+    , defaultInstructions
     , summaryDecoder
     , summaryOf
     , versionedDecoder
@@ -12,6 +13,7 @@ module ManyDecks.Pages.Decks.Deck exposing
     , viewCodeMulti
     )
 
+import Cards.Call as Call exposing (Call)
 import Cards.Deck as Deck exposing (Deck)
 import Html exposing (Html)
 import Html.Attributes as HtmlA
@@ -115,3 +117,26 @@ versionedDecoder =
     Json.map2 Versioned
         Deck.decode
         (Json.field "version" Json.int)
+
+
+defaultInstructions : Int -> List (Html msg)
+defaultInstructions slots =
+    let
+        instruction amount name =
+            Html.span [ HtmlA.class "instruction" ]
+                [ Html.text name
+                , Html.span [ HtmlA.class "amount" ]
+                    [ amount |> String.fromInt |> Html.text ]
+                ]
+
+        pick =
+            [ instruction slots "Pick" ]
+
+        draw =
+            if slots > 2 then
+                [ instruction (slots - 2) "Draw" ]
+
+            else
+                []
+    in
+    [ draw, pick ] |> List.concat

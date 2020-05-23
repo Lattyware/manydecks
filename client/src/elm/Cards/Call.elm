@@ -1,15 +1,15 @@
 module Cards.Call exposing
-    ( Call
+    ( Call(..)
     , Line
     , decode
-    , editor
-    , editorToCall
     , encode
     , fromStrings
     , init
+    , slotCount
     , toString
     , type_
     , view
+    , viewInstructions
     )
 
 import Cards.Call.Part as Part
@@ -20,10 +20,9 @@ import Cards.Card as Card
 import Cards.Response exposing (Response)
 import Cards.Type as Type exposing (Type)
 import Html exposing (Html)
+import Html.Attributes as HtmlA
 import Json.Decode as Json
 import Json.Encode
-import List.Extra as List
-import ManyDecks.Pages.Decks.Edit.CallEditor.Model as Editor exposing (Atom(..))
 
 
 type Call
@@ -44,27 +43,27 @@ init =
     Call [ [ Part.Slot Transform.None Style.None ] ]
 
 
-view : List Response -> Card.Side -> Call -> Html msg
-view fill side (Call lines) =
+view : List Response -> Card.Side -> Card.Source -> List (Html msg) -> Call -> Html msg
+view fill side source instructions (Call lines) =
     let
-        folder row part ( f, column, soFar ) =
+        folder part ( f, soFar ) =
             let
                 ( rendered, rest ) =
                     Part.view f part
             in
-            ( rest, column + 1, rendered :: soFar )
+            ( rest, rendered :: soFar )
 
-        lineFolder line ( f, row, soFar ) =
+        lineFolder line ( f, soFar ) =
             let
-                ( rest, _, lineContent ) =
-                    line |> List.foldr (folder row) ( f, 0, [] )
+                ( rest, lineContent ) =
+                    line |> List.foldr folder ( f, [] )
             in
-            ( rest, row + 1, Html.p [] lineContent :: soFar )
+            ( rest, Html.p [] lineContent :: soFar )
 
-        ( _, _, content ) =
-            lines |> List.foldr lineFolder ( fill, 0, [] )
+        ( _, content ) =
+            lines |> List.foldr lineFolder ( fill, [] )
     in
-    Card.view type_ Card.Immutable content side
+    Card.view type_ Card.Immutable source content (viewInstructions instructions) side
 
 
 toString : String -> List Response -> Call -> String
@@ -107,78 +106,31 @@ encode (Call call) =
     call |> Json.Encode.list line
 
 
-editor : Call -> Editor.Model
-editor (Call lines) =
-    { atoms = lines |> List.map (List.concatMap partToAtoms) |> List.intersperse [ NewLine ] |> List.concat
-    , selection = { start = 0, end = 0 }
-    , selecting = Nothing
-    , moving = Nothing
-    , control = False
-    }
-
-
-partToAtoms : Part -> List Editor.Atom
-partToAtoms part =
-    case part of
-        Part.Text text style ->
-            text |> String.toList |> List.map (\c -> Editor.Letter c style)
-
-        Part.Slot transform style ->
-            [ Editor.Slot transform style ]
-
-
-editorToCall : Editor.Model -> Result String Call
-editorToCall { atoms } =
+viewInstructions : List (Html msg) -> List (Html msg)
+viewInstructions items =
     let
-        parts =
-            atoms |> List.groupWhile (\a b -> b /= NewLine) |> List.map atomsToParts
+        listItem content =
+            Html.li [] [ content ]
+
+        instructionViews =
+            items |> List.map listItem
     in
-    if parts |> List.any (List.any Part.isSlot) then
-        parts |> Call |> Ok
+    if List.length instructionViews > 0 then
+        [ Html.ol [ HtmlA.class "instructions" ] instructionViews ]
 
     else
-        "Calls must contain at least one slot." |> Err
+        []
 
 
-atomsToParts : ( Editor.Atom, List Editor.Atom ) -> List Part
-atomsToParts ( f, r ) =
+slotCount : Call -> Int
+slotCount (Call lines) =
     let
-        atoms =
-            f :: r
-
-        group a b =
-            case a of
-                Letter _ styleA ->
-                    case b of
-                        Letter _ styleB ->
-                            styleA == styleB
-
-                        _ ->
-                            False
+        partSlotCount part =
+            case part of
+                Part.Slot _ _ ->
+                    1
 
                 _ ->
-                    False
-
-        toChar atom =
-            case atom of
-                Letter char _ ->
-                    Just char
-
-                _ ->
-                    Nothing
-
-        toPart ( first, rest ) =
-            case first of
-                Letter _ style ->
-                    (first :: rest)
-                        |> List.filterMap toChar
-                        |> String.fromList
-                        |> (\t -> Part.Text t style |> Just)
-
-                Slot transform style ->
-                    Part.Slot transform style |> Just
-
-                _ ->
-                    Nothing
+                    0
     in
-    atoms |> List.groupWhile group |> List.filterMap toPart
+    lines |> List.concat |> List.map partSlotCount |> List.sum
