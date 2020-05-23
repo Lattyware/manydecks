@@ -47,10 +47,20 @@
         }
       }
 
+      .actions {
+        display: flex;
+        align-items: center;
+        margin-left: 0.25em;
+      }
+
       .cards {
         display: flex;
         flex-direction: column;
         margin-left: 1em;
+
+        .responses {
+          border: 1px solid #000000;
+        }
 
         .calls {
           background-color: #000000;

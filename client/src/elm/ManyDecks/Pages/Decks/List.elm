@@ -15,6 +15,7 @@ import ManyDecks.Pages.Decks.Messages exposing (Msg(..))
 import ManyDecks.Pages.Decks.Model exposing (CodeAndSummary)
 import Material.Button as Button
 import Material.Card as Card
+import Material.IconButton as IconButton
 
 
 view : Model -> List (Html Global.Msg)
@@ -62,6 +63,9 @@ deck { code, summary } =
                 [ summary.calls |> String.fromInt |> Html.text ]
             , Html.span [ HtmlA.class "responses", HtmlA.title "Responses" ]
                 [ summary.responses |> String.fromInt |> Html.text ]
+            ]
+        , Html.div [ HtmlA.class "actions" ]
+            [ IconButton.view (Icon.pen |> Icon.viewIcon) "Edit" (EditDeck code Nothing |> Global.DecksMsg |> Just)
             ]
         ]
     )
