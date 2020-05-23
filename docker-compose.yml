@@ -21,8 +21,8 @@ services:
 
   server:
     container_name: server
-    image: "manydecks/server:dev"
-    build: "./server"
+    image: "massivedecks/manydecks-server:latest"
+    #build: "./server"
     depends_on:
       - storage
     environment:
@@ -33,8 +33,8 @@ services:
 
   client:
     container_name: client
-    image: "manydecks/client:dev"
-    build: "./client"
+    image: "massivedecks/manydecks-client:latest"
+    #build: "./client"
     depends_on:
       - server
     ports:

@@ -1,6 +1,8 @@
 # [Many Decks][hosted]
 
-[![Build Status](https://img.shields.io/github/workflow/status/Lattyware/manydecks/Build%20and%20publish%20to%20GitHub.)](https://github.com/Lattyware/manydecks/actions)
+[![Current Release Version](https://img.shields.io/github/v/tag/Lattyware/manydecks?label=release&sort=semver)](https://github.com/Lattyware/manydecks/releases)
+[![Client Docker Build](https://img.shields.io/docker/cloud/build/massivedecks/manydecks-client?label=client%20docker%20build)][docker-client]
+[![Server Docker Build](https://img.shields.io/docker/cloud/build/massivedecks/manydecks-server?label=server%20docker%20build)][docker-server]
 [![License](https://img.shields.io/github/license/Lattyware/manydecks)](LICENSE)
 
 Many Decks is a free, open source deck source that can be used to host decks for [Massive Decks][md], a comedy party game based on 
@@ -25,7 +27,11 @@ Many Decks is open source software available under [the AGPLv3 license](LICENSE)
 
 To use, [the hosted version][hosted] is easiest.
 
+IF you wish to deploy your own version, the easiest way is to use the docker images, which can be found on Docker Hub:
+[Client][docker-client]/[Server][docker-server].
 
+[docker-client]: https://hub.docker.com/r/massivedecks/manydecks-client
+[docker-server]: https://hub.docker.com/r/massivedecks/manydecks-server
 
 ## Contributing
 
