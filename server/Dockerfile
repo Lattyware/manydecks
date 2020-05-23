@@ -18,7 +18,7 @@ ARG VERSION=dev
 
 ENV MD_VERSION $VERSION
 
-LABEL org.label-schema.name="manydecks/server"
+LABEL org.label-schema.name="massivedecks/manydecks-server"
 LABEL org.label-schema.description="The web server for Many Decks, a deck source for Massive Decks."
 LABEL org.label-schema.url="https://github.com/Lattyware/manydecks"
 LABEL org.label-schema.vcs-url="https://github.com/Lattyware/manydecks"

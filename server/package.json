@@ -16,8 +16,7 @@
     "prestart": "npm run build",
     "start": "node --es-module-specifier-resolution=node dist/index.js",
     "dev": "nodemon",
-    "debug": "nodemon --inspect",
-    "build-image": "docker build . -t \"manydecks/server\" --build-arg BUILD_DATE=\"$(date --rfc-3339=seconds)\""
+    "debug": "nodemon --inspect"
   },
   "dependencies": {
     "express": "^4.17.1",

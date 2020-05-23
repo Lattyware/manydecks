@@ -25,7 +25,7 @@ ARG VERSION=dev
 
 EXPOSE 8080
 
-LABEL org.label-schema.name="manydecks/client"
+LABEL org.label-schema.name="massivedecks/manydecks-client"
 LABEL org.label-schema.description="The web client for Many Decks, a deck source for Massive Decks."
 LABEL org.label-schema.url="https://github.com/Lattyware/manydecks"
 LABEL org.label-schema.vcs-url="https://github.com/Lattyware/manydecks"

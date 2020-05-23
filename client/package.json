@@ -4,8 +4,7 @@
   "description": "The web client to make and share custom decks for Massive Decks.",
   "scripts": {
     "dev": "npx webpack-dev-server --mode=development --port 8082",
-    "build": "npx webpack --mode=production",
-    "build-image": "docker build . -t \"manydecks/client\" --build-arg BUILD_DATE=\"$(date --rfc-3339=seconds)\""
+    "build": "npx webpack --mode=production"
   },
   "repository": {
     "type": "git",
