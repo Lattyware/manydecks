@@ -12,7 +12,7 @@ Please note this is a very early version and there will be rough edges, please d
 
 **[Many Decks][hosted]**
 
-[hosted]: https://decks.md.rereadgames.com
+[hosted]: https://decks.rereadgames.com
 [md]: https://github.com/Lattyware/massivedecks
 
 ## About
@@ -27,7 +27,7 @@ Many Decks is open source software available under [the AGPLv3 license](LICENSE)
 
 To use, [the hosted version][hosted] is easiest.
 
-IF you wish to deploy your own version, the easiest way is to use the docker images, which can be found on Docker Hub:
+If you wish to deploy your own version, the easiest way is to use the docker images, which can be found on Docker Hub:
 [Client][docker-client]/[Server][docker-server].
 
 [docker-client]: https://hub.docker.com/r/massivedecks/manydecks-client

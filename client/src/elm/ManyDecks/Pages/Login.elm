@@ -15,6 +15,7 @@ import ManyDecks.Auth.Guest as Guest
 import ManyDecks.Auth.Methods as Auth
 import ManyDecks.Auth.Twitch as Twitch
 import ManyDecks.Messages as Global
+import ManyDecks.Meta as Meta
 import ManyDecks.Model exposing (Model, Route(..))
 import ManyDecks.Pages.Decks.Route as Decks
 import ManyDecks.Pages.Login.Messages exposing (..)
@@ -61,18 +62,18 @@ update msg model =
 
 view : Model -> List (Html Global.Msg)
 view model =
-    [ Card.view [ HtmlA.class "log-in" ]
+    [ Card.view [ HtmlA.class "page log-in" ]
         [ Html.h1 [] [ Icon.boxOpen |> Icon.viewIcon, Html.text "Many Decks" ]
         , Html.span [ HtmlA.class "version" ] [ Html.text "alpha" ]
         , Html.p []
             [ Html.text "Create decks for "
-            , Html.a [ HtmlA.target "_blank", HtmlA.href "https://md.rereadgames.com" ] [ Html.text "Massive Decks" ]
+            , Html.a [ HtmlA.target "_blank", HtmlA.href Meta.massiveDecksUrl ] [ Html.text "Massive Decks" ]
             , Html.text "."
             ]
         , Html.p []
             [ Html.text "This is a very early version, produced quickly in response to Cardcast's demise, there will "
             , Html.text "likely be bugs. Please report any you find "
-            , Html.a [ HtmlA.target "_blank", HtmlA.href "https://github.com/Lattyware/manydecks" ]
+            , Html.a [ HtmlA.target "_blank", HtmlA.href Meta.issuesUrl ]
                 [ Html.text "on GitHub" ]
             ]
         , Html.p []
@@ -80,6 +81,10 @@ view model =
             , Html.text "decks as well, just in case something goes wrong."
             ]
         , Html.div [ HtmlA.class "methods" ] (model.authMethods |> Maybe.map viewMethods |> Maybe.withDefault [])
+        ]
+    , Html.div [ HtmlA.id "project-link" ]
+        [ Html.a [ HtmlA.target "_blank", Meta.projectUrl |> HtmlA.href ]
+            [ Icon.boxOpen |> Icon.viewIcon, Html.text " on ", Icon.github |> Icon.viewIcon ]
         ]
     ]
 
