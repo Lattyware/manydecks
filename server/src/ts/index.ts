@@ -16,6 +16,19 @@ import * as Uuid from "uuid";
 // @ts-ignore
 import { default as Zip } from "express-easy-zip";
 import * as Errors from "./errors";
+import { default as Jwks } from "jwks-rsa";
+import * as util from "util";
+import {
+  default as Jwt,
+  GetPublicKeyOrSecret,
+  VerifyErrors,
+} from "jsonwebtoken";
+import { AuthFailure } from "./errors";
+
+interface TwitchClaims {
+  sub: string;
+  preferred_username?: string;
+}
 
 sourceMapSupport.install();
 
@@ -38,9 +51,34 @@ const main = async (): Promise<void> => {
   const auth = new Auth.Auth(config.auth.local);
 
   const google =
-    config.auth.google == undefined
+    config.auth.google === undefined
       ? undefined
       : new GoogleAuth.OAuth2Client(config.auth.google.id);
+
+  const twitch =
+    config.auth.twitch === undefined
+      ? undefined
+      : Jwks({
+          jwksUri: config.auth.twitch.jwk,
+        });
+
+  const verifyWith = async (
+    token: string,
+    twitch: Jwks.JwksClient
+  ): Promise<TwitchClaims> => {
+    const keyFromHeader = async (header: Jwt.JwtHeader) => {
+      const getPubKey = util.promisify(twitch.getSigningKey);
+      const key = await getPubKey(header.kid as string);
+      return key.getPublicKey();
+    };
+    const decoded = Jwt.decode(token, { complete: true });
+    if (decoded === null || !decoded.hasOwnProperty("header")) {
+      throw new AuthFailure();
+    }
+    // @ts-ignore
+    const key = await keyFromHeader(decoded.header);
+    return Jwt.verify(token, key, { algorithms: ["RS256"] }) as TwitchClaims;
+  };
 
   const app = express();
 
@@ -60,6 +98,7 @@ const main = async (): Promise<void> => {
     res.json({
       ...(auth.guest !== undefined ? { guest: {} } : {}),
       ...(auth.google !== undefined ? { google: { id: auth.google.id } } : {}),
+      ...(auth.twitch !== undefined ? { twitch: { id: auth.twitch.id } } : {}),
     });
   });
 
@@ -88,7 +127,21 @@ const main = async (): Promise<void> => {
         res.json({ token: auth.sign({ sub: id }), name });
         return;
       }
+    } else if (req.body.twitch) {
+      if (twitch === undefined || config.auth.twitch === undefined) {
+        throw new Errors.AuthFailure();
+      }
+      const claims = await verifyWith(req.body.twitch.id, twitch);
+      const { id, name } = await store.findOrCreateTwitchUser(
+        claims.sub,
+        claims.preferred_username
+      );
+      res.json({ token: auth.sign({ sub: id }), name });
+      return;
     } else if (req.body.guest) {
+      if (config.auth.guest === undefined) {
+        throw new Errors.AuthFailure();
+      }
       const { id, name } = await store.findOrCreateGuestUser();
       res.json({ token: auth.sign({ sub: id }), name });
       return;

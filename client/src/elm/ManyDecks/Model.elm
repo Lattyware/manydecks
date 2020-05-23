@@ -13,7 +13,7 @@ import ManyDecks.Pages.Decks.Route as Decks
 
 
 type Route
-    = Login
+    = Login (Maybe String)
     | Profile
     | Decks Decks.Route
     | NotFound String
@@ -23,6 +23,7 @@ type alias Model =
     { navKey : Navigation.Key
     , route : Route
     , error : Maybe Error
+    , origin : String
 
     -- Login
     , auth : Maybe Auth

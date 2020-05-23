@@ -1,0 +1,65 @@
+.view {
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1em;
+
+    .deck-code {
+      margin-right: 0.5em;
+    }
+
+    mwc-button {
+      align-self: inherit;
+    }
+
+    .details {
+      display: flex;
+      flex-wrap: wrap;
+
+      .counts {
+        margin-left: 0.5em;
+
+        .responses,
+        .calls {
+          margin-right: 0.5em;
+
+          a {
+            color: #000000;
+            text-decoration: none;
+          }
+        }
+      }
+    }
+  }
+
+  .deck-code {
+    font-size: 1em;
+    width: 5em;
+  }
+
+  .massive-decks-ad {
+    text-align: center;
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #responses,
+  #calls {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    li {
+      margin: 0.5em;
+    }
+  }
+}

@@ -13,8 +13,8 @@ type Msg
     | UploadedDeck File
     | Json5Parse String
     | NewDeck Deck
-    | Copy String
     | EditDeck Deck.Code (Maybe Deck)
+    | ViewDeck Deck.Code (Maybe Deck)
     | BackFromEdit
     | Save Deck.Code Json.Patch
     | DeckSaved Deck.Code Deck.Versioned

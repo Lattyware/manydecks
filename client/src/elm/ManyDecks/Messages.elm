@@ -6,6 +6,7 @@ import ManyDecks.Pages.Decks.Edit.Model as Edit exposing (Change)
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Pages.Login.Messages as Login
 import ManyDecks.Pages.Profile.Messages as Profile
+import Url exposing (Url)
 
 
 type Msg
@@ -18,3 +19,5 @@ type Msg
     | DecksMsg Decks.Msg
     | ProfileMsg Profile.Msg
     | EditMsg Edit.Msg
+    | LoadLink Url
+    | Copy String

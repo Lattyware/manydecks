@@ -9,6 +9,7 @@ module ManyDecks.Pages.Decks.Deck exposing
     , summaryOf
     , versionedDecoder
     , viewCode
+    , viewCodeMulti
     )
 
 import Cards.Deck as Deck exposing (Deck)
@@ -30,14 +31,23 @@ codeDecoder =
 
 
 viewCode : (String -> msg) -> Code -> Html msg
-viewCode copy (Code c) =
+viewCode copy c =
+    viewCodeMulti copy "" c
+
+
+viewCodeMulti : (String -> msg) -> String -> Code -> Html msg
+viewCodeMulti copy suffix (Code c) =
+    let
+        id =
+            c ++ suffix
+    in
     Html.input
-        [ c |> HtmlA.id
+        [ id |> HtmlA.id
         , HtmlA.type_ "text"
         , HtmlA.readonly True
         , HtmlA.class "deck-code"
         , HtmlA.value c
-        , c |> copy |> HtmlE.onClick
+        , id |> copy |> HtmlE.onClick
         ]
         []
 

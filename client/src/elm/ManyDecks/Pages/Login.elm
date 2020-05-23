@@ -3,6 +3,8 @@ module ManyDecks.Pages.Login exposing
     , view
     )
 
+import Browser.Navigation as Navigation
+import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import Html exposing (Html)
@@ -11,6 +13,7 @@ import ManyDecks.Api as Api
 import ManyDecks.Auth.Google as Google
 import ManyDecks.Auth.Guest as Guest
 import ManyDecks.Auth.Methods as Auth
+import ManyDecks.Auth.Twitch as Twitch
 import ManyDecks.Messages as Global
 import ManyDecks.Model exposing (Model, Route(..))
 import ManyDecks.Pages.Decks.Route as Decks
@@ -36,6 +39,9 @@ update msg model =
         TryGuestSignIn _ ->
             ( model, Api.signIn Guest.authPayload (SetAuth >> Global.LoginMsg) )
 
+        TryTwitchSignIn method ->
+            ( model, method |> Twitch.requestUrl model.origin |> Navigation.load )
+
         SetAuth auth ->
             ( { model | auth = Just auth, usernameField = auth.name }
             , Cmd.batch
@@ -45,7 +51,12 @@ update msg model =
             )
 
         SignOut ->
-            ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
+            ( { model | auth = Nothing }
+            , Cmd.batch
+                [ Ports.storeAuth Nothing
+                , Route.redirectTo (Login Nothing) model.navKey
+                ]
+            )
 
 
 view : Model -> List (Html Global.Msg)
@@ -68,7 +79,7 @@ view model =
             [ Html.text "Currently the data for this service is not backed up! Please keep local copies of your "
             , Html.text "decks as well, just in case something goes wrong."
             ]
-        , Html.div [] (model.authMethods |> Maybe.map viewMethods |> Maybe.withDefault [])
+        , Html.div [ HtmlA.class "methods" ] (model.authMethods |> Maybe.map viewMethods |> Maybe.withDefault [])
         ]
     ]
 
@@ -77,6 +88,7 @@ viewMethods : Auth.Methods -> List (Html Global.Msg)
 viewMethods methods =
     List.filterMap identity
         [ methods.google |> Maybe.map google
+        , methods.twitch |> Maybe.map twitch
         , methods.guest |> Maybe.map guest
         ]
 
@@ -87,8 +99,19 @@ google method =
         [ Button.view Button.Raised
             Button.Padded
             "Sign in with Google"
-            (Html.div [ HtmlA.class "google-icon" ] [] |> Just)
+            (Icon.google |> Icon.viewIcon |> Just)
             (method |> TryGoogleSignIn |> Global.LoginMsg |> Just)
+        ]
+
+
+twitch : Twitch.Method -> Html Global.Msg
+twitch method =
+    Html.div [ HtmlA.id "twitch-sign-in" ]
+        [ Button.view Button.Raised
+            Button.Padded
+            "Sign in with Twitch"
+            (Icon.twitch |> Icon.viewIcon |> Just)
+            (method |> TryTwitchSignIn |> Global.LoginMsg |> Just)
         ]
 
 

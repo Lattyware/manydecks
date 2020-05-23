@@ -11,6 +11,7 @@ import Url.Parser exposing (..)
 
 type Route
     = List
+    | View Deck.Code
     | Edit Deck.Code
 
 
@@ -20,15 +21,19 @@ toUrl route =
         List ->
             Url.absolute [ "decks" ] []
 
-        Edit code ->
+        View code ->
             Url.absolute [ "decks", code |> Deck.codeToString ] []
+
+        Edit code ->
+            Url.absolute [ "decks", code |> Deck.codeToString, "edit" ] []
 
 
 parser : Parser (Route -> c) c
 parser =
     oneOf
         [ top |> map List
-        , codeParser |> map Edit
+        , codeParser </> s "edit" |> map Edit
+        , codeParser |> map View
         ]
 
 

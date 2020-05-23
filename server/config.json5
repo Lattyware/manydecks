@@ -35,5 +35,12 @@
     // google: {
     //   id: "CHANGE ME", // A client id in the form "YOUR_CLIENT_ID.apps.googleusercontent.com" (include the latter part).
     // },
+
+    // Allows a user ot sign in via Twitch.
+    // See https://dev.twitch.tv/docs/authentication#registration to obtain these details.
+    // twitch: {
+    //   jwk: "https://id.twitch.tv/oauth2/keys",
+    //   id: "CHANGE ME",
+    // },
   },
 }

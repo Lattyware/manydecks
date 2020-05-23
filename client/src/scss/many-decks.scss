@@ -1,6 +1,7 @@
 @use "../../elm-material/src/scss/_material";
 
 @use "./_edit";
+@use "./_view";
 @use "./_profile";
 @use "./_decks";
 @use "./_login";
@@ -27,6 +28,12 @@ body {
   align-items: stretch;
 
   font-family: "Helvetica Neue", "Nimbus Sans L", sans-serif;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  margin: 3em;
 }
 
 .content {

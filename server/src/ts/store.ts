@@ -55,7 +55,7 @@ export class Store {
 
   public findOrCreateUser: (
     googleId: string,
-    googleName: string | undefined
+    googleName?: string
   ) => Promise<User.User> = async (googleId, googleName) =>
     await this.withClient(async (client) => {
       const existingResult = await client.query(
@@ -71,6 +71,29 @@ export class Store {
         await client.query(
           `INSERT INTO manydecks.users (id, name, google_id) VALUES ($1, $2, $3);`,
           [newId, newName, googleId]
+        );
+        return { id: newId, name: newName };
+      }
+    });
+
+  public findOrCreateTwitchUser: (
+    twitchId: string,
+    twitchName?: string
+  ) => Promise<User.User> = async (twitchId, twitchName) =>
+    await this.withClient(async (client) => {
+      const existingResult = await client.query(
+        `SELECT id, name FROM manydecks.users WHERE twitch_id = $1;`,
+        [twitchId]
+      );
+      if (existingResult.rowCount > 0) {
+        const [user] = existingResult.rows;
+        return { id: user.id, name: user.name };
+      } else {
+        const newId = User.id();
+        const newName = twitchName === undefined ? "New User" : twitchName;
+        await client.query(
+          `INSERT INTO manydecks.users (id, name, twitch_id) VALUES ($1, $2, $3);`,
+          [newId, newName, twitchId]
         );
         return { id: newId, name: newName };
       }

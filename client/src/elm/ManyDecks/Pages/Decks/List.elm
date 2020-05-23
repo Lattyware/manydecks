@@ -52,8 +52,8 @@ deck : CodeAndSummary -> ( String, Html Global.Msg )
 deck { code, summary } =
     ( code |> Deck.codeToString
     , Html.li [ HtmlA.class "deck" ]
-        [ Deck.viewCode (Copy >> Global.DecksMsg) code
-        , Html.div [ HtmlA.class "details", EditDeck code Nothing |> Global.DecksMsg |> HtmlE.onClick ]
+        [ Deck.viewCode Global.Copy code
+        , Html.div [ HtmlA.class "details", ViewDeck code Nothing |> Global.DecksMsg |> HtmlE.onClick ]
             [ Html.span [ HtmlA.class "name", HtmlA.title summary.name ] [ Html.text summary.name ]
             , Html.span [ HtmlA.class "language" ] [ summary.language |> Maybe.withDefault "" |> Html.text ]
             ]

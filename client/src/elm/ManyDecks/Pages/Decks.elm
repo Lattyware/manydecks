@@ -16,6 +16,7 @@ import ManyDecks.Pages.Decks.List as List
 import ManyDecks.Pages.Decks.Messages exposing (Msg(..))
 import ManyDecks.Pages.Decks.Model exposing (CodeAndSummary)
 import ManyDecks.Pages.Decks.Route as Route exposing (Route)
+import ManyDecks.Pages.Decks.View as View
 import ManyDecks.Ports as Ports
 import ManyDecks.Route as GlobalRoute
 import Task
@@ -42,9 +43,6 @@ update msg model =
                     model.auth |> Maybe.map .token |> Maybe.withDefault ""
             in
             ( model, Api.createDeck token d (\code -> EditDeck code (Just d) |> Global.DecksMsg) )
-
-        Copy id ->
-            ( model, Ports.copy id )
 
         EditDeck code maybeDeck ->
             case maybeDeck of
@@ -80,7 +78,7 @@ update msg model =
                     )
 
                 Nothing ->
-                    ( model, GlobalRoute.redirectTo Route.Login model.navKey )
+                    ( model, GlobalRoute.redirectTo (Route.Login Nothing) model.navKey )
 
         DeckDeleted code ->
             let
@@ -103,7 +101,7 @@ update msg model =
                     )
 
                 Nothing ->
-                    ( model, GlobalRoute.redirectTo Route.Login model.navKey )
+                    ( model, GlobalRoute.redirectTo (Route.Login Nothing) model.navKey )
 
         DeckSaved code deck ->
             let
@@ -124,6 +122,25 @@ update msg model =
             , Cmd.none
             )
 
+        ViewDeck code maybeDeck ->
+            case maybeDeck of
+                Just d ->
+                    let
+                        route =
+                            Route.Decks (Route.View code)
+
+                        changeRouteIfNeeded =
+                            if model.route == route then
+                                Cmd.none
+
+                            else
+                                route |> GlobalRoute.toUrl |> Navigation.pushUrl model.navKey
+                    in
+                    ( { model | edit = d |> Edit.init |> Just }, changeRouteIfNeeded )
+
+                Nothing ->
+                    ( model, GlobalRoute.redirectTo (Route.Decks (Route.View code)) model.navKey )
+
 
 view : Route -> Model -> List (Html Global.Msg)
 view route model =
@@ -135,6 +152,14 @@ view route model =
             case model.edit of
                 Just edit ->
                     Edit.view code edit
+
+                Nothing ->
+                    [ Html.div [] [ Icon.spinner |> Icon.viewStyled [ Icon.spin ] ] ]
+
+        Route.View code ->
+            case model.edit of
+                Just edit ->
+                    View.view code model.auth edit
 
                 Nothing ->
                     [ Html.div [] [ Icon.spinner |> Icon.viewStyled [ Icon.spin ] ] ]

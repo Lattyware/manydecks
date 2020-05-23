@@ -56,40 +56,24 @@
         -0.05em -0.05em 0.4em transparentize(#000000, 0.7);
     }
   }
+
+  .methods {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    > * {
+      margin: 0.5em;
+    }
+  }
 }
 
-#google-sign-in mwc-button {
+#google-sign-in {
   --mdc-theme-primary: #4285f4;
   --mdc-theme-on-primary: #ffffff;
-  --mdc-button-horizontal-padding: 0.5em;
-  --mdc-shape-small: 0;
-  margin: 0.5em;
+}
 
-  > span {
-    padding: 0;
-    display: flex;
-    align-items: center;
-    margin-left: 1em;
-  }
-
-  .google-icon {
-    background-image: url("../../assets/images/google/normal.svg");
-    background-size: 100% 100%;
-    width: 2em;
-    height: 2em;
-    margin: 0 0.5em 0 -1em;
-    position: absolute;
-  }
-
-  &:disabled .google-icon {
-    background-image: url("../../assets/images/google/disabled.svg");
-  }
-
-  &:focus .google-icon {
-    background-image: url("../../assets/images/google/focus.svg");
-  }
-
-  &:active .google-icon {
-    background-image: url("../../assets/images/google/pressed.svg");
-  }
+#twitch-sign-in {
+  --mdc-theme-primary: #772ce8;
+  --mdc-theme-on-primary: #ffffff;
 }

@@ -51,6 +51,7 @@ init flags url key =
         model =
             { navKey = key
             , route = Route.fromUrl url
+            , origin = { url | path = "", query = Nothing, fragment = Nothing } |> Url.toString
             , error = Nothing
             , auth = flags.auth
             , authMethods = Nothing
@@ -93,8 +94,13 @@ subscriptions model =
 
 
 onUrlRequest : Browser.UrlRequest -> Msg
-onUrlRequest _ =
-    NoOp
+onUrlRequest request =
+    case request of
+        Browser.Internal url ->
+            LoadLink url
+
+        Browser.External _ ->
+            NoOp
 
 
 onUrlChange : Url -> Msg
@@ -111,13 +117,26 @@ update msg model =
         ChangePage route ->
             ( model, Route.redirectTo route model.navKey )
 
+        LoadLink url ->
+            ( model, url |> Url.toString |> Navigation.load )
+
         SetError error ->
             case error of
                 Error.Transient Error.AuthFailure ->
-                    ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
+                    ( { model | auth = Nothing }
+                    , Cmd.batch
+                        [ Ports.storeAuth Nothing
+                        , Route.redirectTo (Login Nothing) model.navKey
+                        ]
+                    )
 
                 Error.User Error.NotAuthenticated ->
-                    ( { model | auth = Nothing }, Route.redirectTo Login model.navKey )
+                    ( { model | auth = Nothing }
+                    , Cmd.batch
+                        [ Ports.storeAuth Nothing
+                        , Route.redirectTo (Login Nothing) model.navKey
+                        ]
+                    )
 
                 _ ->
                     ( { model | error = Just error }, Cmd.none )
@@ -146,6 +165,9 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        Copy id ->
+            ( model, Ports.copy id )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -158,7 +180,7 @@ view model =
 
         body =
             case model.route of
-                Login ->
+                Login _ ->
                     Login.view model
 
                 Profile ->
