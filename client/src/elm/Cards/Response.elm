@@ -39,12 +39,13 @@ view mutability side source (Response text) =
                 Card.Immutable ->
                     [ Html.text text ]
 
-                Card.Mutable update ->
+                Card.Mutable update attrs ->
                     [ Html.textarea
-                        [ HtmlA.value text
-                        , HtmlE.onInput (Response >> update)
-                        , HtmlA.placeholder "type a response here"
-                        ]
+                        ([ HtmlA.value text
+                         , HtmlE.onInput (fromString >> update)
+                         ]
+                            ++ attrs
+                        )
                         []
                     ]
     in
@@ -57,8 +58,8 @@ toString (Response text) =
 
 
 fromString : String -> Response
-fromString text =
-    Response text
+fromString =
+    String.replace "\n" "" >> Response
 
 
 encode : Response -> Json.Value

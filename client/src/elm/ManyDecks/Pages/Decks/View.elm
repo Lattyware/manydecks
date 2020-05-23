@@ -50,34 +50,31 @@ view code auth model =
                 (Decks.EditDeck code (Just model.deck) |> Global.DecksMsg |> Just)
 
         ownerActions _ =
-            Html.div [ HtmlA.class "owner-actions" ]
-                [ editButton ]
+            Html.div [ HtmlA.class "owner-actions" ] [ Html.div [] [], editButton ]
     in
     [ MaterialCard.view [ HtmlA.class "page view" ]
         [ Html.div [ HtmlA.class "header" ]
-            [ Html.div [ HtmlA.class "about" ]
-                [ Html.h1 [ HtmlA.class "title" ] [ code |> Deck.viewCode Global.Copy, model.deck.name |> Html.text ]
-                , Html.div [ HtmlA.class "details" ]
-                    [ model.deck.author |> Maybe.map viewAuthor |> Maybe.withDefault (Html.text "")
-                    , Html.span [ HtmlA.class "counts" ]
-                        [ Html.span [ HtmlA.class "responses" ]
-                            [ Html.a [ HtmlA.href "#responses" ]
-                                [ RegIcon.square |> Icon.viewIcon
-                                , Html.text "×"
-                                , model.deck.responses |> List.length |> String.fromInt |> Html.text
-                                ]
+            [ auth |> Maybe.map ownerActions |> Maybe.withDefault (Html.text "")
+            , Html.h1 [ HtmlA.class "title" ] [ code |> Deck.viewCode Global.Copy, model.deck.name |> Html.text ]
+            , Html.div [ HtmlA.class "details" ]
+                [ model.deck.author |> Maybe.map viewAuthor |> Maybe.withDefault (Html.text "")
+                , Html.span [ HtmlA.class "counts" ]
+                    [ Html.span [ HtmlA.class "responses" ]
+                        [ Html.a [ HtmlA.href "#responses" ]
+                            [ RegIcon.square |> Icon.viewIcon
+                            , Html.text "×"
+                            , model.deck.responses |> List.length |> String.fromInt |> Html.text
                             ]
-                        , Html.span [ HtmlA.class "calls" ]
-                            [ Html.a [ HtmlA.href "#calls" ]
-                                [ Icon.square |> Icon.viewIcon
-                                , Html.text "×"
-                                , model.deck.calls |> List.length |> String.fromInt |> Html.text
-                                ]
+                        ]
+                    , Html.span [ HtmlA.class "calls" ]
+                        [ Html.a [ HtmlA.href "#calls" ]
+                            [ Icon.square |> Icon.viewIcon
+                            , Html.text "×"
+                            , model.deck.calls |> List.length |> String.fromInt |> Html.text
                             ]
                         ]
                     ]
                 ]
-            , auth |> Maybe.map ownerActions |> Maybe.withDefault (Html.text "")
             ]
         , Html.p [ HtmlA.class "massive-decks-ad" ]
             [ Html.text "You can play with this deck on "

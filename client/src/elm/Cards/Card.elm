@@ -12,7 +12,7 @@ import Html.Attributes as HtmlA
 
 type Mutability value msg
     = Immutable
-    | Mutable (value -> msg)
+    | Mutable (value -> msg) (List (Html.Attribute msg))
 
 
 type Side
@@ -32,7 +32,7 @@ view type_ mutability source content meta visibleSide =
                 Immutable ->
                     "immutable"
 
-                Mutable _ ->
+                Mutable _ _ ->
                     "mutable"
 
         typeClass =

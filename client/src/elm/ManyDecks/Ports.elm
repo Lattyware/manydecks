@@ -23,6 +23,9 @@ port storeAuth : Maybe Auth.Auth -> Cmd msg
 port copy : String -> Cmd msg
 
 
+port focus : String -> Cmd msg
+
+
 port setCallInputGhostSelection : Span -> Cmd msg
 
 

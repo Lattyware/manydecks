@@ -45,6 +45,7 @@ type alias Model =
     , errors : List EditError
     , deletionEnabled : Bool
     , importer : Maybe Import.Model
+    , saving : Bool
     }
 
 

@@ -85,11 +85,19 @@ subscriptions model =
 
                 Err error ->
                     error |> Error.BadResponse |> Error.Application |> SetError
+
+        edit =
+            case model.route of
+                Decks (DecksRoute.Edit code) ->
+                    model.edit |> Maybe.map (Edit.subscriptions code) |> Maybe.withDefault Sub.none
+
+                _ ->
+                    Sub.none
     in
     Sub.batch
         [ Ports.googleAuthResult googleAuthResultToMessage
         , Ports.json5Decoded json5DecodedToMessage
-        , model.edit |> Maybe.map Edit.subscriptions |> Maybe.withDefault Sub.none
+        , edit
         ]
 
 

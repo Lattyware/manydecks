@@ -9,13 +9,14 @@ import Cards.Call as Call exposing (Call(..))
 import Cards.Card as GameCard
 import Cards.Deck exposing (Deck)
 import Cards.Response as Response exposing (Response(..))
+import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Regular as RegularIcon
 import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
-import List.Extra as List
+import Json.Decode as Json
 import ManyDecks.Messages as Global
 import ManyDecks.Pages.Decks.Deck as Deck
 import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
@@ -24,11 +25,13 @@ import ManyDecks.Pages.Decks.Edit.Import as Import
 import ManyDecks.Pages.Decks.Edit.Import.Model as Import
 import ManyDecks.Pages.Decks.Edit.Model exposing (..)
 import ManyDecks.Pages.Decks.Messages as Decks
+import ManyDecks.Ports as Ports
 import Material.Button as Button
 import Material.Card as Card
 import Material.IconButton as IconButton
 import Material.Switch as Switch
 import Material.TextField as TextField
+import Time
 
 
 init : Deck -> Model
@@ -41,6 +44,7 @@ init deck =
     , errors = []
     , deletionEnabled = False
     , importer = Nothing
+    , saving = False
     }
 
 
@@ -93,8 +97,19 @@ update msg model =
             let
                 m =
                     endEditing model
+
+                focus =
+                    case cardEditor of
+                        NameEditor _ _ ->
+                            Cmd.none
+
+                        CallEditor _ _ _ ->
+                            "call-input-ghost" |> Ports.focus
+
+                        ResponseEditor _ _ _ ->
+                            "response-input" |> Ports.focus
             in
-            ( { m | editing = Just cardEditor }, Cmd.none )
+            ( { m | editing = Just cardEditor }, focus )
 
         EndEditing ->
             ( endEditing model, Cmd.none )
@@ -219,8 +234,23 @@ view code model =
                 source =
                     { name = model.deck.name, url = Nothing }
 
+                onKeyPress k =
+                    if k == 13 then
+                        EndEditing |> wrap
+
+                    else
+                        Global.NoOp
+
                 viewResponse r =
-                    [ Response.view (UpdateResponse >> Edit >> wrap |> GameCard.Mutable) GameCard.Face source r ]
+                    let
+                        mutable msg =
+                            GameCard.Mutable msg
+                                [ HtmlA.id "response-input"
+                                , HtmlA.placeholder "type a response here"
+                                , HtmlE.keyCode |> Json.map onKeyPress |> HtmlE.on "keydown"
+                                ]
+                    in
+                    [ Response.view (UpdateResponse >> Edit >> wrap |> mutable) GameCard.Face source r ]
 
                 editing editor =
                     case editor of
@@ -284,16 +314,19 @@ view code model =
                     else
                         Redo |> wrap |> Just
 
-                saveAction =
-                    if List.isEmpty model.changes then
-                        Nothing
+                ( saveText, saveIcon, saveAction ) =
+                    if model.saving then
+                        ( "Saving…", Icon.spinner |> Icon.viewStyled [ Icon.spin ], Nothing )
+
+                    else if List.isEmpty model.changes then
+                        ( "Saved", Icon.check |> Icon.viewIcon, Nothing )
 
                     else
                         let
-                            toPatch ( c, d ) =
-                                Change.toPatch d [ c ]
+                            action =
+                                Decks.Save code (model.changes |> Change.manyToPatch) |> Global.DecksMsg |> Just
                         in
-                        Decks.Save code (model.changes |> List.map toPatch |> List.concat) |> Global.DecksMsg |> Just
+                        ( "Save", Icon.save |> Icon.viewIcon, action )
 
                 actions =
                     Html.div [ HtmlA.class "actions" ]
@@ -303,24 +336,23 @@ view code model =
                             "Import"
                             (Icon.fileImport |> Icon.viewIcon |> Just)
                             (True |> SetImportVisible |> wrap |> Just)
-                        , Button.view
-                            Button.Standard
-                            Button.Padded
-                            "Undo"
-                            (Icon.undo |> Icon.viewIcon |> Just)
-                            undoAction
-                        , Button.view
-                            Button.Standard
-                            Button.Padded
-                            "Redo"
-                            (Icon.redo |> Icon.viewIcon |> Just)
-                            redoAction
-                        , Button.view
-                            Button.Standard
-                            Button.Padded
-                            "Save"
-                            (Icon.save |> Icon.viewIcon |> Just)
-                            saveAction
+                        , Html.div [ HtmlA.class "undo-redo" ]
+                            [ Button.view
+                                Button.Standard
+                                Button.Padded
+                                "Undo"
+                                (Icon.undo |> Icon.viewIcon |> Just)
+                                undoAction
+                            , Button.view
+                                Button.Standard
+                                Button.Padded
+                                "Redo"
+                                (Icon.redo |> Icon.viewIcon |> Just)
+                                redoAction
+                            ]
+                        , Html.div [ HtmlA.class "save" ]
+                            [ Button.view Button.Standard Button.Padded saveText (saveIcon |> Just) saveAction
+                            ]
                         ]
 
                 errorView =
@@ -374,14 +406,26 @@ view code model =
                 ]
 
 
-subscriptions : Model -> Sub Global.Msg
-subscriptions model =
-    case model.editing of
-        Just (CallEditor _ _ _) ->
-            CallEditor.subscriptions (UpdateCall >> Edit >> wrap)
+subscriptions : Deck.Code -> Model -> Sub Global.Msg
+subscriptions code model =
+    let
+        editor =
+            case model.editing of
+                Just (CallEditor _ _ _) ->
+                    CallEditor.subscriptions (UpdateCall >> Edit >> wrap)
 
-        _ ->
-            Sub.none
+                _ ->
+                    Sub.none
+
+        autoSave =
+            if not model.saving && (model.changes |> List.isEmpty |> not) then
+                (Decks.Save code (model.changes |> Change.manyToPatch) |> Global.DecksMsg |> always)
+                    |> Time.every 5000
+
+            else
+                Sub.none
+    in
+    Sub.batch [ editor, autoSave ]
 
 
 viewError : EditError -> Html Global.Msg
@@ -475,7 +519,10 @@ endEditing model =
                 Ok (Just c) ->
                     model |> applyChange c
 
-                _ ->
+                Ok Nothing ->
+                    { model | editing = Nothing }
+
+                Err _ ->
                     model
 
         Nothing ->

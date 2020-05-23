@@ -14,11 +14,15 @@
     list-style: none;
     padding: 0;
     flex-basis: 50%;
+    flex-shrink: 1;
+    flex-grow: 1;
 
     li {
       padding: 0.25em;
       cursor: pointer;
       min-height: 1.2em;
+
+      word-break: break-all;
 
       &:empty::after {
         display: block;
@@ -62,6 +66,16 @@
     flex-wrap: wrap;
     justify-content: space-between;
     margin-bottom: 1em;
+
+    .save {
+      display: flex;
+      justify-content: flex-end;
+      flex-basis: 8em;
+    }
+
+    .undo-redo {
+      display: flex;
+    }
   }
 
   .delete {

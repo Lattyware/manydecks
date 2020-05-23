@@ -2,6 +2,7 @@ module ManyDecks.Pages.Decks.Edit.Change exposing
     ( apply
     , asContextForError
     , fromEditor
+    , manyToPatch
     , toPatch
     )
 
@@ -22,6 +23,15 @@ import ManyDecks.Pages.Decks.Edit.Model exposing (..)
 apply : List Change -> Direction -> Deck -> Result String Deck
 apply changes direction deck =
     applyPatchToDeck (changes |> toPatch direction) deck
+
+
+manyToPatch : List ( Change, Direction ) -> Json.Patch
+manyToPatch changes =
+    let
+        single ( c, d ) =
+            toPatch d [ c ]
+    in
+    changes |> List.map single |> List.concat
 
 
 toPatch : Direction -> List Change -> Json.Patch

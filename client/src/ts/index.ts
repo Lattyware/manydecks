@@ -57,8 +57,10 @@ const main = async () => {
   });
 
   app.ports.copy.subscribe((id) => {
-    const textField = document.getElementById(id);
-    if (textField !== null && textField instanceof HTMLInputElement) {
+    const element = document.getElementById(id);
+    if (element !== null) {
+      const textField = element as HTMLInputElement;
+      textField.focus();
       textField.select();
       const value = textField.value;
       textField.setSelectionRange(0, value.length);
@@ -68,6 +70,19 @@ const main = async () => {
         document.execCommand("copy");
       }
     }
+  });
+
+  app.ports.focus.subscribe((id) => {
+    window.requestAnimationFrame(() => {
+      const element = document.getElementById(id);
+      if (element !== null) {
+        const textarea = element as HTMLTextAreaElement;
+        textarea.focus();
+        // @ts-ignore
+        const last = element.textLength;
+        textarea.setSelectionRange(last, last);
+      }
+    });
   });
 
   app.ports.setCallInputGhostSelection.subscribe(({ start, end }) => {
@@ -83,8 +98,8 @@ const main = async () => {
             end: textarea.selectionEnd,
           });
         };
-        element.oninput = updateSelection;
-        element.onkeydown = updateSelection;
+        textarea.oninput = updateSelection;
+        textarea.onkeydown = updateSelection;
       }
     }
   });

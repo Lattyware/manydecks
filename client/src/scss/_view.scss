@@ -1,31 +1,39 @@
 .view {
   .header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     padding: 1em;
 
     .deck-code {
       margin-right: 0.5em;
     }
 
-    mwc-button {
-      align-self: inherit;
+    .title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     .owner-actions {
       display: flex;
-      flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
+      align-items: center;
 
       mwc-button {
-        margin: 0.5em 0;
+        align-self: inherit;
       }
     }
 
     .details {
       display: flex;
+      align-items: center;
       flex-wrap: wrap;
+
+      .author {
+        flex-grow: 1;
+      }
 
       .counts {
         margin-left: 0.5em;

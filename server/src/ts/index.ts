@@ -18,11 +18,7 @@ import { default as Zip } from "express-easy-zip";
 import * as Errors from "./errors";
 import { default as Jwks } from "jwks-rsa";
 import * as util from "util";
-import {
-  default as Jwt,
-  GetPublicKeyOrSecret,
-  VerifyErrors,
-} from "jsonwebtoken";
+import { default as Jwt } from "jsonwebtoken";
 import { AuthFailure } from "./errors";
 
 interface TwitchClaims {

@@ -90,7 +90,11 @@ update msg model =
                             else
                                 model.selection
             in
-            ( { model | selection = selection }, Ports.setCallInputGhostSelection selection )
+            if selection /= model.selection then
+                ( { model | selection = selection }, Ports.setCallInputGhostSelection selection )
+
+            else
+                ( model, Cmd.none )
 
         StartSelection position ->
             let

@@ -91,7 +91,7 @@ update msg model =
                 Just auth ->
                     let
                         updateDeck edit =
-                            { edit | changes = [] }
+                            { edit | changes = [], saving = True }
                     in
                     ( { model | edit = model.edit |> Maybe.map updateDeck }
                     , Api.save auth.token code patch (DeckSaved code >> Global.DecksMsg)
@@ -110,7 +110,7 @@ update msg model =
                         d
 
                 updateDeck edit =
-                    { edit | deck = deck.deck }
+                    { edit | deck = deck.deck, saving = False }
             in
             ( { model
                 | edit = model.edit |> Maybe.map updateDeck

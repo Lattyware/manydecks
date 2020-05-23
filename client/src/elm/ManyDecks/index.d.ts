@@ -34,6 +34,7 @@ export namespace Elm {
         json5Decoded: OutboundPort<object>;
         storeAuth: InboundPort<Auth | undefined>;
         copy: InboundPort<string>;
+        focus: InboundPort<string>;
         setCallInputGhostSelection: InboundPort<Span>;
         getCallInputGhostSelection: OutboundPort<Span>;
       };
