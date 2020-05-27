@@ -37,34 +37,41 @@ const EditableDeck = t.intersection([
     calls: t.array(t.array(t.array(Part))),
     responses: t.array(t.string),
   }),
-  t.partial({ language: t.string }),
+  t.partial({ language: t.string, public: t.literal(true) }),
 ]);
 export type EditableDeck = t.TypeOf<typeof EditableDeck>;
+
+const Author = t.strict({ id: t.string, name: t.string });
 
 const Deck = t.intersection([
   EditableDeck,
   t.strict({
-    author: t.string,
+    author: Author,
     version: t.Int,
   }),
 ]);
 export type Deck = t.TypeOf<typeof Deck>;
 
-const Summary = t.strict({
-  name: t.string,
-  author: t.string,
-  language: t.string,
-  calls: t.Int,
-  responses: t.Int,
-  version: t.Int,
-});
+const Summary = t.intersection([
+  t.strict({
+    name: t.string,
+    author: Author,
+    calls: t.Int,
+    responses: t.Int,
+    version: t.Int,
+  }),
+  t.partial({
+    language: t.string,
+    public: t.boolean,
+  }),
+]);
 export type Summary = t.TypeOf<typeof Summary>;
 
 const SummaryAndCode = t.strict({
   code: t.string,
   summary: Summary,
 });
-export type SummaryAndCode = t.TypeOf<typeof SummaryAndCode>;
+export type CodeAndSummary = t.TypeOf<typeof SummaryAndCode>;
 
 const hasSlot = (call: Part[][]) => {
   for (const line of call) {

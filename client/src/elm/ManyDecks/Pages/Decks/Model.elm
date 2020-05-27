@@ -2,7 +2,7 @@ module ManyDecks.Pages.Decks.Model exposing (..)
 
 import Json.Decode as Json
 import Json.Decode.Pipeline as Json
-import ManyDecks.Pages.Decks.Deck as Deck
+import ManyDecks.Deck as Deck
 
 
 type alias CodeAndSummary =

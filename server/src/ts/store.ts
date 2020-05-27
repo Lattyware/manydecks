@@ -21,7 +21,12 @@ export const init = async (config: Pg.PoolConfig): Promise<Store> => {
     await client.query(
       "CREATE SCHEMA IF NOT EXISTS manydecks; SET search_path = manydecks;"
     );
-    await Migrate.createDb("manydecks", { client }, migrateConfig);
+    const db = config.database
+      ? config.database
+      : config.user
+      ? config.user
+      : "manydecks";
+    await Migrate.createDb(db, { client }, migrateConfig);
     await Migrate.migrate({ client }, "src/sql", migrateConfig);
 
     await client.query(
@@ -160,30 +165,24 @@ export class Store {
     user = undefined
   ) =>
     await this.withClient(async (client) => {
-      const meta = await (user === undefined
-        ? client.query(
-            `
-        SELECT users.name as author, decks.deck, decks.version
+      const meta = await client.query(
+        `
+        SELECT users.name as author, decks.author as author_id, decks.deck, decks.version
         FROM manydecks.decks INNER JOIN manydecks.users ON users.id = decks.author 
         WHERE decks.id = $1;
         `,
-            [id]
-          )
-        : client.query(
-            `
-        SELECT users.name as author, decks.deck, decks.version
-        FROM manydecks.decks INNER JOIN manydecks.users ON users.id = decks.author 
-        WHERE decks.id = $1 AND decks.author = $2;
-        `,
-            [id, user]
-          ));
+        [id]
+      );
       if (meta.rowCount === 0) {
         throw new Errors.DeckNotFound();
       }
       const [metaRow] = meta.rows;
       return {
         ...metaRow.deck,
-        author: metaRow.author,
+        author: {
+          id: metaRow.author_id,
+          name: metaRow.author,
+        },
         version: metaRow.version,
       };
     });
@@ -192,7 +191,7 @@ export class Store {
     await this.withClient(async (client) => {
       const decks = await client.query(
         `
-          SELECT users.name as author, decks.deck, decks.version
+          SELECT users.name as author, decks.author as author_id, decks.deck, decks.version
           FROM manydecks.decks INNER JOIN manydecks.users ON users.id = decks.author 
           WHERE decks.author = $1;
         `,
@@ -202,7 +201,10 @@ export class Store {
       for (const deck of decks.rows) {
         results.push({
           ...deck.deck,
-          author: deck.author,
+          author: {
+            id: deck.author_id,
+            name: deck.author,
+          },
           version: deck.version,
         });
       }
@@ -213,7 +215,7 @@ export class Store {
     await this.withClient(async (client) => {
       const meta = await client.query(
         `
-        SELECT name, author, language, calls, responses, version 
+        SELECT name, author, author_id, language, calls, responses, public, version 
         FROM manydecks.summaries WHERE summaries.id = $1;
         `,
         [id]
@@ -224,41 +226,93 @@ export class Store {
       const [metaRow] = meta.rows;
       return {
         name: metaRow.name,
-        author: metaRow.author,
+        author: {
+          id: metaRow.author_id,
+          name: metaRow.author,
+        },
         language: metaRow.language,
         calls: metaRow.calls,
         responses: metaRow.responses,
         version: metaRow.version,
+        public: metaRow.public,
       };
     });
 
+  private static *summariesFromRows(
+    result: Pg.QueryResult
+  ): Iterable<Deck.CodeAndSummary> {
+    for (const deck of result.rows) {
+      const code = Code.encode(deck.id);
+      yield {
+        code,
+        summary: {
+          name: deck.name,
+          author: {
+            id: deck.author_id,
+            name: deck.author,
+          },
+          language: deck.language,
+          calls: deck.calls,
+          responses: deck.responses,
+          public: deck.public,
+          version: deck.version,
+        },
+      };
+    }
+  }
+
   public getSummariesForUser: (
-    user: string
-  ) => Promise<Deck.SummaryAndCode[]> = async (user) =>
+    user: string,
+    publicOnly: boolean
+  ) => Promise<Iterable<Deck.CodeAndSummary>> = async (
+    user,
+    publicOnly = true
+  ) =>
     await this.withClient(async (client) => {
       const result = await client.query(
         `
-        SELECT id, name, author, language, calls, responses, version 
-        FROM manydecks.summaries WHERE summaries.author_id = $1;
+        SELECT id, name, author_id, author, language, calls, responses, public, version
+        FROM manydecks.summaries WHERE summaries.author_id = $1 AND (NOT $2 OR summaries.public)
+        ORDER BY id DESC;
         `,
-        [user]
+        [user, publicOnly]
       );
-      const summaries = [];
-      for (const deck of result.rows) {
-        const code = Code.encode(deck.id);
-        summaries.push({
-          code,
-          summary: {
-            name: deck.name,
-            author: deck.author,
-            language: deck.language,
-            calls: deck.calls,
-            responses: deck.responses,
-            version: deck.version,
-          },
-        });
+      return Store.summariesFromRows(result);
+    });
+
+  public browse: (
+    query?: string,
+    page?: number
+  ) => Promise<Iterable<Deck.CodeAndSummary>> = async (query, page) =>
+    await this.withClient(async (client) => {
+      const pageSize = 20;
+      const p = page === undefined ? 0 : page;
+      let result;
+      if (query === undefined) {
+        result = await client.query(
+          `
+            SELECT id, name, author_id, author, language, calls, responses, public, version
+            FROM manydecks.summaries 
+            WHERE summaries.public  
+            ORDER BY id DESC 
+            OFFSET $1::int * $2::int LIMIT $2
+          `,
+          [p, pageSize]
+        );
+      } else {
+        result = await client.query(
+          `
+            SELECT id, name, author_id, author, language, calls, responses, public, version, ts_rank_cd(deck_search , query) AS rank
+            FROM manydecks.summaries, to_tsquery($3) query 
+            WHERE summaries.public 
+            AND query @@ summaries.deck_search 
+            ORDER BY rank DESC 
+            OFFSET $1::int * $2::int LIMIT $2
+          `,
+          [p, pageSize, query]
+        );
       }
-      return summaries;
+      return Store.summariesFromRows(result);
     });
 
   public updateDeck: (
@@ -267,7 +321,7 @@ export class Store {
     patch: Patch.Operation[]
   ) => Promise<Deck.Deck> = async (id, user, patch) =>
     await this.withClient(async (client) => {
-      const deck = await this.getDeck(id, user);
+      const deck = await this.getDeck(id);
       try {
         JsonPatch.applyPatch(deck, patch);
       } catch (error) {

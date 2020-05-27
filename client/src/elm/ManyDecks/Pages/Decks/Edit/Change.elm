@@ -7,7 +7,6 @@ module ManyDecks.Pages.Decks.Edit.Change exposing
     )
 
 import Cards.Call as Call
-import Cards.Deck as Deck exposing (Deck)
 import Cards.Response as Response
 import Html exposing (Html)
 import Html.Attributes as HtmlA
@@ -16,6 +15,7 @@ import Json.Encode as Json
 import Json.Patch
 import Json.Patch.Invertible as Json
 import Json.Pointer as Json
+import ManyDecks.Deck as Deck exposing (Deck)
 import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
 import ManyDecks.Pages.Decks.Edit.Model exposing (..)
 
@@ -94,6 +94,13 @@ toOperation change =
     case change of
         ChangeName old newName ->
             Json.Replace [ "name" ] (old |> Json.string) (newName |> Json.string)
+
+        ChangePublic listed ->
+            if listed then
+                Json.Add [ "public" ] (Json.bool True)
+
+            else
+                Json.Remove [ "public" ] (Json.bool True)
 
         CallChange cardChange ->
             handleCardChange [ "calls" ] Call.encode cardChange

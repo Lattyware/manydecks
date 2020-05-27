@@ -22,7 +22,7 @@ import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as Json
 import List.Extra as List
-import ManyDecks.Pages.Decks.Deck as Call
+import ManyDecks.Deck as Deck
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model exposing (..)
 import ManyDecks.Ports as Ports
 import Material.IconButton as IconButton
@@ -371,7 +371,7 @@ view wrap source model =
                 0
 
         instructions =
-            model.atoms |> List.map slotCount |> List.sum |> Call.defaultInstructions
+            model.atoms |> List.map slotCount |> List.sum |> Deck.defaultInstructions
     in
     Html.div []
         [ controls

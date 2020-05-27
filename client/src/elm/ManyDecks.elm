@@ -2,20 +2,22 @@ module ManyDecks exposing (..)
 
 import Browser
 import Browser.Navigation as Navigation
-import Cards.Deck as Deck
+import Cards.Deck as FileDeck
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Html
 import Html.Attributes as HtmlA
 import Json.Decode as Json
-import ManyDecks.Auth exposing (Auth)
+import ManyDecks.Auth as Auth exposing (Auth)
 import ManyDecks.Auth.Google as Google
+import ManyDecks.Deck as Deck
 import ManyDecks.Error as Error
 import ManyDecks.Error.Model as Error exposing (Error)
 import ManyDecks.Messages exposing (..)
 import ManyDecks.Model exposing (..)
 import ManyDecks.Pages.Decks as Decks
+import ManyDecks.Pages.Decks.Browse as Browse
 import ManyDecks.Pages.Decks.Edit as Edit
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Pages.Decks.Route as DecksRoute
@@ -30,7 +32,7 @@ import Url exposing (Url)
 
 
 type alias Flags =
-    { auth : Maybe Auth }
+    { auth : Maybe Json.Value }
 
 
 main : Program Flags Model Msg
@@ -48,17 +50,21 @@ main =
 init : Flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
+        auth =
+            flags.auth |> Maybe.andThen (Json.decodeValue Auth.decoder >> Result.toMaybe)
+
         model =
             { navKey = key
             , route = Route.fromUrl url
             , origin = { url | path = "", query = Nothing, fragment = Nothing } |> Url.toString
             , error = Nothing
-            , auth = flags.auth
+            , auth = auth
             , authMethods = Nothing
-            , usernameField = flags.auth |> Maybe.map .name |> Maybe.withDefault ""
+            , usernameField = auth |> Maybe.map .name |> Maybe.withDefault ""
             , decks = Nothing
             , profileDeletionEnabled = False
             , edit = Nothing
+            , browse = Nothing
             }
     in
     Route.onRouteChanged model.route model
@@ -72,19 +78,24 @@ subscriptions model =
                 Ok (Ok code) ->
                     code |> Login.GoogleAuthResult |> LoginMsg
 
-                Ok (Err error) ->
+                Ok (Err _) ->
                     Error.AuthFailure |> Error.Transient |> SetError
 
                 Err error ->
                     error |> Error.BadResponse |> Error.Application |> SetError
 
         json5DecodedToMessage value =
-            case value |> Json.decodeValue Deck.decode of
-                Ok deck ->
-                    deck |> Decks.NewDeck |> DecksMsg
+            case model.auth of
+                Just a ->
+                    case value |> Json.decodeValue FileDeck.decode of
+                        Ok fileDeck ->
+                            fileDeck |> Deck.fromFileDeck a |> Decks.NewDeck |> DecksMsg
 
-                Err error ->
-                    error |> Error.BadResponse |> Error.Application |> SetError
+                        Err error ->
+                            error |> Error.BadResponse |> Error.Application |> SetError
+
+                _ ->
+                    NoOp
 
         edit =
             case model.route of
@@ -123,7 +134,7 @@ update msg model =
             Route.onRouteChanged newRoute model
 
         ChangePage route ->
-            ( model, Route.redirectTo route model.navKey )
+            ( model, Route.redirectTo model.navKey route )
 
         LoadLink url ->
             ( model, url |> Url.toString |> Navigation.load )
@@ -134,7 +145,7 @@ update msg model =
                     ( { model | auth = Nothing }
                     , Cmd.batch
                         [ Ports.storeAuth Nothing
-                        , Route.redirectTo (Login Nothing) model.navKey
+                        , Route.redirectTo model.navKey (Login Nothing)
                         ]
                     )
 
@@ -142,7 +153,7 @@ update msg model =
                     ( { model | auth = Nothing }
                     , Cmd.batch
                         [ Ports.storeAuth Nothing
-                        , Route.redirectTo (Login Nothing) model.navKey
+                        , Route.redirectTo model.navKey (Login Nothing)
                         ]
                     )
 
@@ -179,6 +190,9 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        BrowseMsg browseMsg ->
+            Browse.update browseMsg model
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -211,33 +225,56 @@ view model =
 
 
 generalNav model =
-    case model.auth of
-        Just auth ->
-            let
-                changePageIfNot page =
-                    if model.route == page then
-                        Nothing
+    let
+        title =
+            Html.h1 [] [ Icon.boxOpen |> Icon.viewIcon, Html.text " Many Decks" ]
 
-                    else
-                        page |> ChangePage |> Just
-            in
-            Html.nav []
-                [ Button.view Button.Standard
-                    Button.Padded
-                    "Sign Out"
-                    (Icon.signOutAlt |> Icon.viewIcon |> Just)
-                    (Login.SignOut |> LoginMsg |> Just)
-                , Button.view Button.Standard
-                    Button.Padded
-                    "Decks"
-                    (Icon.list |> Icon.viewIcon |> Just)
-                    (DecksRoute.List |> Decks |> changePageIfNot)
-                , Button.view Button.Standard
-                    Button.Padded
-                    (auth.name ++ "'s Profile")
-                    (Icon.userCircle |> Icon.viewIcon |> Just)
-                    (Profile |> changePageIfNot)
-                ]
+        changePageIfNot page =
+            if model.route == page then
+                Nothing
 
-        Nothing ->
-            Html.text ""
+            else
+                page |> ChangePage |> Just
+
+        publicDecks =
+            Button.view Button.Standard
+                Button.Padded
+                "Decks"
+                (Icon.search |> Icon.viewIcon |> Just)
+                (DecksRoute.Browse 1 Nothing |> Decks |> changePageIfNot)
+
+        parts =
+            case model.auth of
+                Just auth ->
+                    [ publicDecks
+                    , title
+                    , Html.div []
+                        [ Button.view Button.Standard
+                            Button.Padded
+                            "My Decks"
+                            (Icon.list |> Icon.viewIcon |> Just)
+                            (auth.id |> DecksRoute.List |> Decks |> changePageIfNot)
+                        , Button.view Button.Standard
+                            Button.Padded
+                            "Profile"
+                            (Icon.userCircle |> Icon.viewIcon |> Just)
+                            (Profile |> changePageIfNot)
+                        , Button.view Button.Standard
+                            Button.Padded
+                            "Sign Out"
+                            (Icon.signOutAlt |> Icon.viewIcon |> Just)
+                            (Login.SignOut |> LoginMsg |> Just)
+                        ]
+                    ]
+
+                Nothing ->
+                    [ publicDecks
+                    , title
+                    , Button.view Button.Standard
+                        Button.Padded
+                        "Sign In"
+                        (Icon.signInAlt |> Icon.viewIcon |> Just)
+                        (Login Nothing |> changePageIfNot)
+                    ]
+    in
+    Html.nav [] parts

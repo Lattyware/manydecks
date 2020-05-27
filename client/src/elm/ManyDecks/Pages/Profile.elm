@@ -39,7 +39,7 @@ update msg model =
                     ( model, Cmd.none )
 
         ProfileUpdated auth ->
-            ( { model | auth = Just auth, usernameField = auth.name }, auth |> Just |> Ports.storeAuth )
+            ( { model | auth = Just auth, usernameField = auth.name }, auth |> Just |> Auth.store )
 
         Delete ->
             case model.auth of
@@ -52,7 +52,7 @@ update msg model =
         ProfileDeleted ->
             ( { model | auth = Nothing }
             , Cmd.batch
-                [ Ports.storeAuth Nothing, Route.redirectTo (Login Nothing) model.navKey ]
+                [ Ports.storeAuth Nothing, Route.redirectTo model.navKey (Login Nothing) ]
             )
 
         Backup ->
@@ -69,7 +69,7 @@ update msg model =
 
 view : Model -> List (Html Global.Msg)
 view model =
-    [ Card.view [ HtmlA.class "profile" ]
+    [ Card.view [ HtmlA.class "page profile" ]
         [ editSection model
         , backupSection
         , deleteSection model

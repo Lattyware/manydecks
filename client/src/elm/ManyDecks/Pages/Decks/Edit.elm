@@ -7,7 +7,6 @@ module ManyDecks.Pages.Decks.Edit exposing
 
 import Cards.Call as Call exposing (Call(..))
 import Cards.Card as GameCard
-import Cards.Deck exposing (Deck)
 import Cards.Response as Response exposing (Response(..))
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
@@ -17,8 +16,8 @@ import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as Json
+import ManyDecks.Deck as Deck exposing (Deck)
 import ManyDecks.Messages as Global
-import ManyDecks.Pages.Decks.Deck as Deck
 import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
 import ManyDecks.Pages.Decks.Edit.Change as Change
 import ManyDecks.Pages.Decks.Edit.Import as Import
@@ -191,13 +190,16 @@ update msg model =
 
                         toChangeAndApply card m =
                             let
+                                deck =
+                                    m.deck
+
                                 change =
                                     case card of
                                         Import.ImportedCall c ->
-                                            Add (m.deck.calls |> List.length) c |> CallChange
+                                            Add (deck.calls |> List.length) c |> CallChange
 
                                         Import.ImportedResponse r ->
-                                            Add (m.deck.responses |> List.length) r |> ResponseChange
+                                            Add (deck.responses |> List.length) r |> ResponseChange
                             in
                             applyChange change m
 
@@ -217,6 +219,9 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        ClearErrors ->
+            ( { model | errors = [] }, Cmd.none )
+
 
 wrap : Msg -> Global.Msg
 wrap =
@@ -231,8 +236,11 @@ view code model =
 
         Nothing ->
             let
+                deck =
+                    model.deck
+
                 source =
-                    { name = model.deck.name, url = Nothing }
+                    { name = deck.name, url = Nothing }
 
                 onKeyPress k =
                     if k == 13 then
@@ -336,6 +344,11 @@ view code model =
                             "Import"
                             (Icon.fileImport |> Icon.viewIcon |> Just)
                             (True |> SetImportVisible |> wrap |> Just)
+                        , Button.view Button.Standard
+                            Button.Padded
+                            "Download"
+                            (Icon.fileDownload |> Icon.viewIcon |> Just)
+                            (deck |> Decks.DownloadDeck |> Global.DecksMsg |> Just)
                         , Html.div [ HtmlA.class "undo-redo" ]
                             [ Button.view
                                 Button.Standard
@@ -363,7 +376,13 @@ view code model =
                         [ Html.div [ HtmlA.class "overlay" ]
                             [ Html.div [ HtmlA.class "background" ] []
                             , Card.view [ HtmlA.class "errors" ]
-                                [ Html.ul [] (model.errors |> List.map viewError) ]
+                                [ Html.ul [] (model.errors |> List.map viewError)
+                                , Button.view Button.Standard
+                                    Button.Padded
+                                    "Dismiss"
+                                    (Icon.times |> Icon.viewIcon |> Just)
+                                    (ClearErrors |> wrap |> Just)
+                                ]
                             ]
                         ]
 
@@ -377,10 +396,10 @@ view code model =
             List.concat
                 [ [ Card.view [ HtmlA.class "edit" ]
                         [ actions
-                        , details (model |> editingName |> Maybe.withDefault model.deck.name)
+                        , details (model |> editingName |> Maybe.withDefault deck.name) model.deck.public
                         , Html.div [ HtmlA.class "cards" ]
-                            [ calls model.deck.calls
-                            , responses model.deck.responses
+                            [ calls deck.calls
+                            , responses deck.responses
                             ]
                         , Html.div [ HtmlA.class "delete" ]
                             [ Switch.view
@@ -449,8 +468,12 @@ editingName model =
             Nothing
 
 
-details : String -> Html Global.Msg
-details name =
+details : String -> Bool -> Html Global.Msg
+details name public =
+    let
+        change =
+            ChangePublic >> ApplyChange >> wrap |> Just
+    in
     Html.div [ HtmlA.class "details" ]
         [ TextField.viewWithFocus "Title"
             TextField.Text
@@ -458,6 +481,13 @@ details name =
             (UpdateName >> Edit >> wrap |> Just)
             (NameEditor name name |> StartEditing |> wrap)
             (EndEditing |> wrap)
+        , Html.p []
+            [ Switch.view (Html.span [] [ Html.text "Listed: Show this deck publicly for people to find." ]) public change ]
+        , Html.p []
+            [ Icon.exclamationTriangle |> Icon.viewIcon
+            , Html.text " Note that being unlisted doesn't mean the deck is private: people with the code can still "
+            , Html.text "use it, and it is possible for people to guess the code."
+            ]
         ]
 
 

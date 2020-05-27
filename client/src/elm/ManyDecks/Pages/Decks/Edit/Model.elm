@@ -10,8 +10,8 @@ module ManyDecks.Pages.Decks.Edit.Model exposing
     )
 
 import Cards.Call exposing (Call)
-import Cards.Deck as Deck exposing (Deck)
 import Cards.Response exposing (Response)
+import ManyDecks.Deck exposing (Deck)
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model as CallEditor
 import ManyDecks.Pages.Decks.Edit.Import.Model as Import
 
@@ -34,6 +34,7 @@ type Msg
     | SetImportVisible Bool
     | Import
     | UpdateImportText String
+    | ClearErrors
 
 
 type alias Model =
@@ -57,6 +58,7 @@ type UpdateEditor
 
 type Change
     = ChangeName String String
+    | ChangePublic Bool
     | CallChange (CardChange Call)
     | ResponseChange (CardChange Response)
 

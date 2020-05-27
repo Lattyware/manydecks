@@ -6,12 +6,13 @@ module ManyDecks.Route exposing
     )
 
 import Browser.Navigation as Navigation
-import Cards.Deck exposing (Deck)
 import ManyDecks.Api as Api
 import ManyDecks.Auth.Twitch as Twitch
+import ManyDecks.Deck as Deck exposing (Deck)
 import ManyDecks.Messages exposing (Msg(..))
 import ManyDecks.Model exposing (..)
-import ManyDecks.Pages.Decks.Deck as Deck
+import ManyDecks.Pages.Decks.Browse.Messages as Browse
+import ManyDecks.Pages.Decks.Browse.Model as Browse
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Pages.Decks.Route as Decks
 import ManyDecks.Pages.Login.Messages as Login
@@ -46,8 +47,8 @@ onRouteChanged route oldModel =
 
                 Nothing ->
                     case model.auth of
-                        Just _ ->
-                            ( model, redirectTo (Decks Decks.List) model.navKey )
+                        Just auth ->
+                            ( model, redirectTo model.navKey (auth.id |> Decks.List |> Decks) )
 
                         Nothing ->
                             ( model, Api.getAuthMethods (Login.ReceiveMethods >> LoginMsg) )
@@ -58,17 +59,12 @@ onRouteChanged route oldModel =
                     ( model, Cmd.none )
 
                 Nothing ->
-                    ( model, redirectTo (Login Nothing) model.navKey )
+                    ( model, redirectTo model.navKey (Login Nothing) )
 
         Decks decksRoute ->
             case decksRoute of
-                Decks.List ->
-                    case model.auth of
-                        Just auth ->
-                            ( model, Api.getDecks auth.token (Decks.ReceiveDecks >> DecksMsg) )
-
-                        Nothing ->
-                            ( model, redirectTo (Login Nothing) model.navKey )
+                Decks.List id ->
+                    ( model, Api.getDecks id (model.auth |> Maybe.map .token) (Decks.ReceiveDecks >> DecksMsg) )
 
                 Decks.View code ->
                     let
@@ -91,7 +87,12 @@ onRouteChanged route oldModel =
                             ( model, getDeck (\deck -> Decks.EditDeck code (Just deck) |> DecksMsg) )
 
                         Nothing ->
-                            ( model, redirectTo (Login Nothing) model.navKey )
+                            ( model, redirectTo model.navKey (Login Nothing) )
+
+                Decks.Browse page search ->
+                    ( model
+                    , Api.browseDecks page search (Browse.Page search page >> Browse.ReceiveDecks >> BrowseMsg)
+                    )
 
         NotFound _ ->
             ( model, Cmd.none )
@@ -123,8 +124,8 @@ getExistingDeck oldModel code =
             Nothing
 
 
-redirectTo : Route -> Navigation.Key -> Cmd Msg
-redirectTo route navKey =
+redirectTo : Navigation.Key -> Route -> Cmd Msg
+redirectTo navKey route =
     route |> toUrl |> Navigation.pushUrl navKey
 
 
@@ -132,7 +133,7 @@ toUrl : Route -> String
 toUrl route =
     case route of
         Login _ ->
-            Url.absolute [] []
+            Url.absolute [ "sign-in" ] []
 
         Profile ->
             Url.absolute [ "profile" ] []
@@ -152,7 +153,8 @@ fromUrl url =
 parser : Parser (Route -> c) c
 parser =
     oneOf
-        [ top </> fragment Login
+        [ top |> map (Decks (Decks.Browse 1 Nothing))
+        , s "sign-in" </> fragment Login
         , s "profile" |> map Profile
         , s "decks" </> Decks.parser |> map Decks
         ]

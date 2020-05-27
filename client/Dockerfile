@@ -6,12 +6,11 @@ ENV MD_VERSION $VERSION
 WORKDIR /md
 
 COPY ["./package.json", "./package-lock.json", "./"]
-# COPY ["./elm-material/package.json", "./elm-material/package-lock.json", "./elm-material/"]
 
 RUN ["apk", "add", "--no-cache", "--virtual", ".gyp", "python", "make", "g++"]
 RUN ["npm", "ci"]
 
-COPY ["./tsconfig.json", "./webpack.config.js", "./elm.json", "./"]
+COPY ["./tsconfig.json", "./webpack.config.js", "./postcss.config.js", "./elm.json", "./"]
 COPY ["./src", "./src"]
 COPY ["./elm-material/src", "./elm-material/src"]
 COPY ["./assets", "./assets"]

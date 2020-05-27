@@ -1,4 +1,4 @@
-@use "./edit/_import";
+@use "edit/import";
 
 .edit {
   display: flex;
@@ -101,7 +101,7 @@
   justify-content: center;
   align-items: center;
 
-  overflow: auto;
+  padding: 3em;
 
   .background {
     position: absolute;
@@ -114,6 +114,8 @@
   }
 
   .errors {
+    overflow: auto;
+
     .change {
       white-space: pre;
     }

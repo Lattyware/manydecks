@@ -1,7 +1,6 @@
 module ManyDecks.Api exposing (..)
 
 import Bytes exposing (Bytes)
-import Cards.Deck as Deck exposing (Deck)
 import Http
 import Json.Decode
 import Json.Encode as Json
@@ -9,17 +8,23 @@ import Json.Patch
 import Json.Patch.Invertible as Json
 import ManyDecks.Auth as Auth exposing (Auth)
 import ManyDecks.Auth.Methods as Auth
+import ManyDecks.Deck as Deck exposing (Deck)
 import ManyDecks.Error as Error
 import ManyDecks.Error.Model as Error exposing (Error)
 import ManyDecks.Messages exposing (Msg(..))
-import ManyDecks.Pages.Decks.Deck as Deck
 import ManyDecks.Pages.Decks.Model as Decks
+import ManyDecks.User as User
 import Url.Builder as Url
 
 
 apiUrl : List String -> String
 apiUrl path =
     Url.absolute ("api" :: path) []
+
+
+queryApiUrl : List String -> List Url.QueryParameter -> String
+queryApiUrl path queries =
+    Url.absolute ("api" :: path) queries
 
 
 getAuthMethods : (Auth.Methods -> Msg) -> Cmd Msg
@@ -47,11 +52,32 @@ getDeck code toMsg =
         }
 
 
-getDecks : String -> (List Decks.CodeAndSummary -> Msg) -> Cmd Msg
-getDecks token toMsg =
+getDecks : User.Id -> Maybe String -> (List Decks.CodeAndSummary -> Msg) -> Cmd Msg
+getDecks id token toMsg =
+    let
+        body =
+            case token of
+                Just t ->
+                    [ ( "token", t |> Json.string ) ]
+
+                Nothing ->
+                    []
+    in
     Http.post
-        { url = apiUrl [ "decks" ]
-        , body = [ ( "token", token |> Json.string ) ] |> Json.object |> Http.jsonBody
+        { url = apiUrl [ "decks", "by", id ]
+        , body = body |> Json.object |> Http.jsonBody
+        , expect = expectJsonOrError toMsg (Decks.codeAndSummaryDecoder |> Json.Decode.list)
+        }
+
+
+browseDecks : Int -> Maybe String -> (List Decks.CodeAndSummary -> Msg) -> Cmd Msg
+browseDecks page search toMsg =
+    let
+        queries =
+            [ search |> Maybe.map (Url.string "q"), Url.int "p" (page - 1) |> Just ] |> List.filterMap identity
+    in
+    Http.get
+        { url = queryApiUrl [ "decks", "browse" ] queries
         , expect = expectJsonOrError toMsg (Decks.codeAndSummaryDecoder |> Json.Decode.list)
         }
 
@@ -83,7 +109,7 @@ deleteDeck token code toMsg =
         }
 
 
-save : String -> Deck.Code -> Json.Patch -> (Deck.Versioned -> Msg) -> Cmd Msg
+save : String -> Deck.Code -> Json.Patch -> (Deck -> Msg) -> Cmd Msg
 save token code patch toMsg =
     Http.request
         { method = "PATCH"
@@ -95,7 +121,7 @@ save token code patch toMsg =
             ]
                 |> Json.object
                 |> Http.jsonBody
-        , expect = expectJsonOrError toMsg Deck.versionedDecoder
+        , expect = expectJsonOrError toMsg Deck.decode
         , timeout = Nothing
         , tracker = Nothing
         }

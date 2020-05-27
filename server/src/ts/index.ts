@@ -151,6 +151,13 @@ const main = async (): Promise<void> => {
     res.status(HttpStatus.OK).json({});
   });
 
+  app.get("/api/decks/browse", async (req, res) => {
+    const page = req.query.p as string;
+    const query = req.query.q as string;
+    const decks = await store.browse(query, parseInt(page));
+    res.json(Array.from(decks));
+  });
+
   app.get("/api/decks/:deckCode", async (req, res) => {
     const id = Code.decode(req.params.deckCode);
     const result = await store.getDeck(id);
@@ -173,14 +180,20 @@ const main = async (): Promise<void> => {
   app.post("/api/decks", async (req, res) => {
     const claims = auth.validate(req.body.token);
     const initial = req.body.initial;
-    if (initial !== undefined) {
-      const id = await store.create(initial, claims.sub);
-      const code = Code.encode(id);
-      res.status(HttpStatus.CREATED).json(code);
-    } else {
-      const decks = await store.getSummariesForUser(claims.sub);
-      res.json(decks);
+    const id = await store.create(initial, claims.sub);
+    const code = Code.encode(id);
+    res.status(HttpStatus.CREATED).json(code);
+  });
+
+  app.post("/api/decks/by/:userId", async (req, res) => {
+    let requester: string | undefined = undefined;
+    if (req.body.token !== undefined) {
+      const claims = auth.validate(req.body.token);
+      requester = claims.sub;
     }
+    const userId = req.params.userId;
+    const decks = await store.getSummariesForUser(userId, requester !== userId);
+    res.json(Array.from(decks));
   });
 
   app.post("/api/backup", async (req, res) => {
@@ -189,11 +202,14 @@ const main = async (): Promise<void> => {
     // @ts-ignore
     res.zip({
       files: files.map((c) => {
-        delete c.version;
+        const d: any = c;
+        delete d.version;
+        delete d.public;
+        d.author = d.author.name;
         return {
           content: Json5.stringify(c, undefined, 2),
-          name: `${c.name.replace(/\s/g, "-")}-${
-            c.language
+          name: `${d.name.replace(/\s/g, "-")}-${
+            d.language
           }-${Uuid.v4()}.deck.json5`,
         };
       }),

@@ -10,6 +10,7 @@ import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
 import ManyDecks.Api as Api
+import ManyDecks.Auth as Auth
 import ManyDecks.Auth.Google as Google
 import ManyDecks.Auth.Guest as Guest
 import ManyDecks.Auth.Methods as Auth
@@ -46,8 +47,8 @@ update msg model =
         SetAuth auth ->
             ( { model | auth = Just auth, usernameField = auth.name }
             , Cmd.batch
-                [ auth |> Just |> Ports.storeAuth
-                , Route.redirectTo (Decks Decks.List) model.navKey
+                [ auth |> Just |> Auth.store
+                , Route.redirectTo model.navKey (auth.id |> Decks.List |> Decks)
                 ]
             )
 
@@ -55,7 +56,7 @@ update msg model =
             ( { model | auth = Nothing }
             , Cmd.batch
                 [ Ports.storeAuth Nothing
-                , Route.redirectTo (Login Nothing) model.navKey
+                , Route.redirectTo model.navKey (Login Nothing)
                 ]
             )
 

@@ -1,7 +1,6 @@
 port module ManyDecks.Ports exposing (..)
 
 import Json.Decode as Json
-import ManyDecks.Auth as Auth
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model exposing (Span)
 
 
@@ -17,7 +16,7 @@ port json5Decode : String -> Cmd msg
 port json5Decoded : (Json.Value -> msg) -> Sub msg
 
 
-port storeAuth : Maybe Auth.Auth -> Cmd msg
+port storeAuth : Maybe Json.Value -> Cmd msg
 
 
 port copy : String -> Cmd msg

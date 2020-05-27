@@ -1,79 +1,85 @@
+@use "decks/_edit";
+@use "decks/_view";
+@use "decks/_browse";
+
 .decks {
   min-width: 18em;
   max-width: 30em;
-  margin: 3em;
 
   .controls {
     display: flex;
     justify-content: space-between;
   }
+}
 
-  ul {
+ul.deck-list {
+  display: flex;
+  flex-direction: column;
+
+  list-style: none;
+  padding: 0;
+
+  .deck {
+    margin: 0.5em;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
 
-    list-style: none;
-    padding: 0;
+    .deck-code {
+      margin-right: 1em;
+      cursor: copy;
+    }
 
-    .deck {
-      margin: 0.5em;
+    .details {
       display: flex;
-      align-items: center;
+      flex-grow: 1;
+      flex-direction: column;
       overflow: hidden;
 
-      .deck-code {
-        margin-right: 1em;
-        cursor: copy;
-      }
-
-      .details {
-        display: flex;
-        flex-grow: 1;
-        flex-direction: column;
+      .name {
+        flex-shrink: 1;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         overflow: hidden;
-
-        cursor: pointer;
-
-        &:hover {
-          background-color: #cccccc;
-        }
-
-        .name {
-          flex-shrink: 1;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-          overflow: hidden;
-          min-width: 1em;
-        }
+        min-width: 1em;
       }
 
-      .actions {
+      .description {
+        display: flex;
+        flex-wrap: wrap;
+
+        > span {
+          margin-right: 0.5em;
+        }
+      }
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      margin-left: 0.25em;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      margin-left: 1em;
+
+      .responses {
+        border: 1px solid #000000;
+      }
+
+      .calls {
+        background-color: #000000;
+        color: #ffffff;
+      }
+
+      .calls,
+      .responses {
         display: flex;
         align-items: center;
-        margin-left: 0.25em;
-      }
-
-      .cards {
-        display: flex;
-        flex-direction: column;
-        margin-left: 1em;
-
-        .responses {
-          border: 1px solid #000000;
-        }
-
-        .calls {
-          background-color: #000000;
-          color: #ffffff;
-        }
-
-        .calls,
-        .responses {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0.1em;
-        }
+        justify-content: center;
+        padding: 0.1em;
       }
     }
   }
