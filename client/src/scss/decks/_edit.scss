@@ -133,11 +133,25 @@
     background-color: #4285f4;
   }
 
+  .slot.empty {
+    flex-grow: 10 !important;
+  }
+
+  .affixed-slot {
+    display: inline flex;
+    flex-wrap: wrap;
+    flex-grow: 1;
+
+    .slot.empty {
+      min-width: 3em;
+    }
+  }
+
   .spacer {
     display: block;
     flex-basis: 0;
     flex-grow: 1;
-    height: 1.2em;
+    height: 1.15em;
   }
 
   #call-input-ghost {

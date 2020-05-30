@@ -434,16 +434,30 @@ viewLine wrap model line =
 clusterAtoms : List ( a, Atom ) -> List ( ( a, Atom ), List ( a, Atom ) )
 clusterAtoms line =
     let
+        ifBroken c =
+            if c == ' ' then
+                False
+
+            else
+                True
+
         isCluster ( _, a ) ( _, b ) =
             case a of
                 Letter c _ ->
                     case b of
                         Letter _ _ ->
-                            if c == ' ' then
-                                False
+                            ifBroken c
 
-                            else
-                                True
+                        Slot _ _ ->
+                            ifBroken c
+
+                        _ ->
+                            False
+
+                Slot _ _ ->
+                    case b of
+                        Letter c _ ->
+                            ifBroken c
 
                         _ ->
                             False
@@ -461,7 +475,18 @@ viewClusters v ( single, rest ) =
             v single
 
         _ ->
-            Html.span [] (single :: rest |> List.map v)
+            let
+                content =
+                    single :: rest
+
+                attrs =
+                    if content |> List.any ((\( _, a ) -> a) >> isSlot) then
+                        [ HtmlA.class "affixed-slot" ]
+
+                    else
+                        []
+            in
+            Html.span attrs (content |> List.map v)
 
 
 viewAtom : (Msg -> msg) -> Model -> ( Int, Atom ) -> Html msg
