@@ -45,7 +45,7 @@ toPatch direction changes =
                 Revert ->
                     Json.invert
     in
-    changes |> List.map toOperation |> directionOp
+    changes |> List.concatMap toOperation |> directionOp
 
 
 asContextForError : String -> Change -> Direction -> Html msg
@@ -89,24 +89,42 @@ applyPatchToDeck patch =
         >> Result.andThen (Json.Decode.decodeValue Deck.decode >> Result.mapError Json.Decode.errorToString)
 
 
-toOperation : Change -> Json.Operation
+toOperation : Change -> List Json.Operation
 toOperation change =
     case change of
         ChangeName old newName ->
-            Json.Replace [ "name" ] (old |> Json.string) (newName |> Json.string)
+            [ Json.Replace [ "name" ] (old |> Json.string) (newName |> Json.string) ]
 
         ChangePublic listed ->
             if listed then
-                Json.Add [ "public" ] (Json.bool True)
+                [ Json.Add [ "public" ] (Json.bool True) ]
 
             else
-                Json.Remove [ "public" ] (Json.bool True)
+                [ Json.Remove [ "public" ] (Json.bool True) ]
+
+        ChangeLanguage old new ->
+            case old of
+                Just oldLang ->
+                    case new of
+                        Just newLang ->
+                            [ Json.Replace [ "language" ] (oldLang |> Json.string) (newLang |> Json.string) ]
+
+                        Nothing ->
+                            [ Json.Remove [ "language" ] (oldLang |> Json.string) ]
+
+                Nothing ->
+                    case new of
+                        Just newLang ->
+                            [ Json.Add [ "language" ] (newLang |> Json.string) ]
+
+                        Nothing ->
+                            []
 
         CallChange cardChange ->
-            handleCardChange [ "calls" ] Call.encode cardChange
+            [ handleCardChange [ "calls" ] Call.encode cardChange ]
 
         ResponseChange cardChange ->
-            handleCardChange [ "responses" ] Response.encode cardChange
+            [ handleCardChange [ "responses" ] Response.encode cardChange ]
 
 
 handleCardChange : Json.Pointer -> (value -> Json.Value) -> CardChange value -> Json.Operation

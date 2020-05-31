@@ -10,6 +10,7 @@ import Html exposing (Html)
 import Html.Attributes as HtmlA
 import ManyDecks.Auth exposing (Auth)
 import ManyDecks.Deck as Deck
+import ManyDecks.Language as Language
 import ManyDecks.Messages as Global
 import ManyDecks.Meta as Meta
 import ManyDecks.Model as Route
@@ -21,8 +22,8 @@ import Material.Button as Button
 import Material.Card as MaterialCard
 
 
-view : Deck.Code -> Maybe Auth -> Edit.Model -> List (Html Global.Msg)
-view code auth model =
+view : Deck.Code -> Maybe Auth -> List Language.Described -> Edit.Model -> List (Html Global.Msg)
+view code auth knownLanguages model =
     let
         viewAuthor { id, name } =
             let
@@ -30,6 +31,9 @@ view code auth model =
                     Html.a [ id |> Decks.List |> Route.Decks |> Route.toUrl |> HtmlA.href ] [ Html.text name ]
             in
             Html.span [ HtmlA.class "author" ] [ Html.text "By ", link ]
+
+        viewLanguage l =
+            Html.span [ HtmlA.class "language" ] [ Html.text "in ", l |> Language.description knownLanguages |> Html.text ]
 
         li content =
             Html.li [] [ content ]
@@ -69,6 +73,8 @@ view code auth model =
             , Html.h1 [ HtmlA.class "title" ] [ code |> Deck.viewCode Global.Copy, deck.name |> Html.text ]
             , Html.div [ HtmlA.class "details" ]
                 [ deck.author |> viewAuthor
+                , deck.language |> Maybe.map viewLanguage |> Maybe.withDefault (Html.text "")
+                , Html.span [ HtmlA.class "spacer" ] []
                 , Html.span [ HtmlA.class "counts" ]
                     [ Html.span [ HtmlA.class "responses" ]
                         [ Html.a [ HtmlA.href "#responses" ]

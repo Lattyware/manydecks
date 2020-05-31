@@ -4,9 +4,9 @@ import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import Html exposing (Html)
 import Html.Attributes as HtmlA
-import Html.Events as HtmlE
 import ManyDecks.Auth exposing (Auth)
 import ManyDecks.Deck as Deck
+import ManyDecks.Language as Language
 import ManyDecks.Messages as Global
 import ManyDecks.Model as Route
 import ManyDecks.Pages.Decks.Messages exposing (Msg(..))
@@ -16,8 +16,8 @@ import ManyDecks.Route as Route
 import Material.IconButton as IconButton
 
 
-view : Maybe Auth -> Decks.CodeAndSummary -> Html Global.Msg
-view auth { code, summary } =
+view : Maybe Auth -> List Language.Described -> Decks.CodeAndSummary -> Html Global.Msg
+view auth knownLanguages { code, summary } =
     let
         isOwner =
             (auth |> Maybe.map .id) == Just summary.author.id
@@ -35,9 +35,12 @@ view auth { code, summary } =
         authorLink author =
             Html.a [ author.id |> Decks.List |> Route.Decks |> Route.toUrl |> HtmlA.href ] [ Html.text author.name ]
 
+        viewLang l =
+            Html.span [ HtmlA.class "language" ] [ Html.text "in ", l |> Language.description knownLanguages |> Html.text ]
+
         description =
             [ Html.span [ HtmlA.class "author" ] [ Html.text "by ", authorLink summary.author ] |> Just
-            , summary.language |> Maybe.map (\l -> Html.span [ HtmlA.class "language" ] [ Html.text "in ", Html.text l ])
+            , summary.language |> Maybe.map viewLang
             ]
 
         nameLink =

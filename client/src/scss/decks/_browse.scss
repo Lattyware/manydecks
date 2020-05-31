@@ -1,7 +1,17 @@
 .browse {
   .search {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+
+    mwc-textfield {
+      flex-basis: 10em;
+      flex-grow: 1;
+    }
+
+    mwc-select {
+      width: auto;
+    }
   }
 
   .page-controls {

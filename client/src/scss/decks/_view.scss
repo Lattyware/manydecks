@@ -31,8 +31,12 @@
       align-items: center;
       flex-wrap: wrap;
 
-      .author {
+      .spacer {
         flex-grow: 1;
+      }
+
+      .language {
+        margin-left: 0.3em;
       }
 
       .counts {

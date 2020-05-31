@@ -42,10 +42,10 @@ type alias Deck =
     }
 
 
-empty : Auth -> Deck
-empty auth =
+empty : String -> Auth -> Deck
+empty defaultLanguage auth =
     { name = "New Deck"
-    , language = Nothing
+    , language = Just defaultLanguage
     , author = auth |> Auth.toUser
     , calls = []
     , responses = []

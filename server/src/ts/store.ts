@@ -58,6 +58,14 @@ export class Store {
     this.issuer = issuer;
   }
 
+  public languages: () => Promise<string[]> = async () =>
+    await this.withClient(async (client) => {
+      const result = await client.query(
+        `SELECT code FROM manydecks.languages;`
+      );
+      return result.rows.map((row) => row.code);
+    });
+
   public findOrCreateUser: (
     googleId: string,
     googleName?: string
@@ -282,34 +290,36 @@ export class Store {
 
   public browse: (
     query?: string,
+    language?: string,
     page?: number
-  ) => Promise<Iterable<Deck.CodeAndSummary>> = async (query, page) =>
+  ) => Promise<Iterable<Deck.CodeAndSummary>> = async (query, language, page) =>
     await this.withClient(async (client) => {
       const pageSize = 20;
       const p = page === undefined ? 0 : page;
+      const l = language === undefined ? null : language;
       let result;
       if (query === undefined) {
         result = await client.query(
           `
             SELECT id, name, author_id, author, language, calls, responses, public, version
             FROM manydecks.summaries 
-            WHERE summaries.public  
+            WHERE summaries.public AND ($3::text IS NULL OR summaries.language = $3::text)
             ORDER BY id DESC 
             OFFSET $1::int * $2::int LIMIT $2
           `,
-          [p, pageSize]
+          [p, pageSize, l]
         );
       } else {
         result = await client.query(
           `
             SELECT id, name, author_id, author, language, calls, responses, public, version, ts_rank_cd(deck_search , query) AS rank
-            FROM manydecks.summaries, to_tsquery($3) query 
-            WHERE summaries.public 
+            FROM manydecks.summaries, to_tsquery($4) query 
+            WHERE summaries.public  AND ($3::text IS NULL OR summaries.language = $3::text)
             AND query @@ summaries.deck_search 
             ORDER BY rank DESC 
             OFFSET $1::int * $2::int LIMIT $2
           `,
-          [p, pageSize, query]
+          [p, pageSize, l, query]
         );
       }
       return Store.summariesFromRows(result);

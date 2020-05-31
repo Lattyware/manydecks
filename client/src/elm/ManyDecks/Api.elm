@@ -1,4 +1,17 @@
-module ManyDecks.Api exposing (..)
+module ManyDecks.Api exposing
+    ( backup
+    , browseDecks
+    , createDeck
+    , deleteDeck
+    , deleteProfile
+    , getAuthMethods
+    , getDeck
+    , getDecks
+    , getLanguages
+    , save
+    , saveProfile
+    , signIn
+    )
 
 import Bytes exposing (Bytes)
 import Http
@@ -12,6 +25,7 @@ import ManyDecks.Deck as Deck exposing (Deck)
 import ManyDecks.Error as Error
 import ManyDecks.Error.Model as Error exposing (Error)
 import ManyDecks.Messages exposing (Msg(..))
+import ManyDecks.Pages.Decks.Browse.Model as Browse
 import ManyDecks.Pages.Decks.Model as Decks
 import ManyDecks.User as User
 import Url.Builder as Url
@@ -25,6 +39,14 @@ apiUrl path =
 queryApiUrl : List String -> List Url.QueryParameter -> String
 queryApiUrl path queries =
     Url.absolute ("api" :: path) queries
+
+
+getLanguages : (List String -> Msg) -> Cmd Msg
+getLanguages handleSuccess =
+    Http.get
+        { url = apiUrl [ "languages" ]
+        , expect = expectJsonOrError handleSuccess (Json.Decode.list Json.Decode.string)
+        }
 
 
 getAuthMethods : (Auth.Methods -> Msg) -> Cmd Msg
@@ -70,14 +92,17 @@ getDecks id token toMsg =
         }
 
 
-browseDecks : Int -> Maybe String -> (List Decks.CodeAndSummary -> Msg) -> Cmd Msg
-browseDecks page search toMsg =
+browseDecks : Browse.Query -> (List Decks.CodeAndSummary -> Msg) -> Cmd Msg
+browseDecks { page, language, search } toMsg =
     let
         queries =
-            [ search |> Maybe.map (Url.string "q"), Url.int "p" (page - 1) |> Just ] |> List.filterMap identity
+            [ search |> Maybe.map (Url.string "q")
+            , language |> Maybe.map (Url.string "l")
+            , Url.int "p" (page - 1) |> Just
+            ]
     in
     Http.get
-        { url = queryApiUrl [ "decks", "browse" ] queries
+        { url = queryApiUrl [ "decks", "browse" ] (queries |> List.filterMap identity)
         , expect = expectJsonOrError toMsg (Decks.codeAndSummaryDecoder |> Json.Decode.list)
         }
 

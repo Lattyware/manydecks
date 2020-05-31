@@ -1,14 +1,21 @@
 module ManyDecks.Pages.Decks.Browse.Model exposing
     ( Model
     , Page
+    , Query
     )
 
 import ManyDecks.Pages.Decks.Model as Decks
 
 
+type alias Query =
+    { page : Int
+    , language : Maybe String
+    , search : Maybe String
+    }
+
+
 type alias Page =
-    { search : Maybe String
-    , index : Int
+    { query : Query
     , decks : List Decks.CodeAndSummary
     }
 

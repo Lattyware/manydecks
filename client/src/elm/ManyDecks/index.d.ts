@@ -1,3 +1,5 @@
+import { Tag as LanguageTag } from "../../ts/languages";
+
 type Token = string;
 
 interface Auth {
@@ -7,6 +9,7 @@ interface Auth {
 
 interface Flags {
   auth?: Auth;
+  lang: string;
 }
 
 interface Span {
@@ -37,6 +40,10 @@ export namespace Elm {
         focus: InboundPort<string>;
         setCallInputGhostSelection: InboundPort<Span>;
         getCallInputGhostSelection: OutboundPort<Span>;
+        languageSearch: InboundPort<string>;
+        languageResults: OutboundPort<LanguageTag[]>;
+        languageExpand: InboundPort<string>;
+        languageExpanded: OutboundPort<LanguageTag[]>;
       };
     }
     export function init(options: {

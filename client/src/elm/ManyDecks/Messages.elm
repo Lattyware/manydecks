@@ -3,6 +3,7 @@ module ManyDecks.Messages exposing (Msg(..))
 import ManyDecks.Error.Model exposing (Error)
 import ManyDecks.Model exposing (Route)
 import ManyDecks.Pages.Decks.Browse.Messages as Browse
+import ManyDecks.Pages.Decks.Edit.LanguageSelector as LanguageSelector
 import ManyDecks.Pages.Decks.Edit.Model as Edit exposing (Change)
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Pages.Login.Messages as Login
@@ -23,3 +24,5 @@ type Msg
     | EditMsg Edit.Msg
     | LoadLink Url
     | Copy String
+    | SetLanguages (List String)
+    | UpdateLanguageDescription LanguageSelector.Tag

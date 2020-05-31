@@ -9,6 +9,7 @@ import FontAwesome.Styles as Icon
 import Html
 import Html.Attributes as HtmlA
 import Json.Decode as Json
+import ManyDecks.Api as Api
 import ManyDecks.Auth as Auth exposing (Auth)
 import ManyDecks.Auth.Google as Google
 import ManyDecks.Deck as Deck
@@ -19,6 +20,7 @@ import ManyDecks.Model exposing (..)
 import ManyDecks.Pages.Decks as Decks
 import ManyDecks.Pages.Decks.Browse as Browse
 import ManyDecks.Pages.Decks.Edit as Edit
+import ManyDecks.Pages.Decks.Edit.LanguageSelector as LanguageSelector
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Pages.Decks.Route as DecksRoute
 import ManyDecks.Pages.Login as Login
@@ -32,7 +34,9 @@ import Url exposing (Url)
 
 
 type alias Flags =
-    { auth : Maybe Json.Value }
+    { auth : Maybe Json.Value
+    , lang : String
+    }
 
 
 main : Program Flags Model Msg
@@ -57,6 +61,7 @@ init flags url key =
             { navKey = key
             , route = Route.fromUrl url
             , origin = { url | path = "", query = Nothing, fragment = Nothing } |> Url.toString
+            , browserLanguage = flags.lang
             , error = Nothing
             , auth = auth
             , authMethods = Nothing
@@ -65,9 +70,13 @@ init flags url key =
             , profileDeletionEnabled = False
             , edit = Nothing
             , browse = Nothing
+            , knownLanguages = []
             }
+
+        ( initialModel, routeCmd ) =
+            Route.onRouteChanged model.route model
     in
-    Route.onRouteChanged model.route model
+    ( initialModel, Cmd.batch [ routeCmd, Api.getLanguages SetLanguages ] )
 
 
 subscriptions : Model -> Sub Msg
@@ -109,6 +118,7 @@ subscriptions model =
         [ Ports.googleAuthResult googleAuthResultToMessage
         , Ports.json5Decoded json5DecodedToMessage
         , edit
+        , Ports.languageExpanded (LanguageSelector.decodeExpanded >> UpdateLanguageDescription)
         ]
 
 
@@ -193,6 +203,38 @@ update msg model =
         BrowseMsg browseMsg ->
             Browse.update browseMsg model
 
+        SetLanguages languages ->
+            ( { model | knownLanguages = languages |> List.map (\c -> { code = c, description = c }) }
+            , languages |> List.map Ports.languageExpand |> Cmd.batch
+            )
+
+        UpdateLanguageDescription { language, region } ->
+            let
+                updateDescription toUpdate =
+                    case language of
+                        Just langDetails ->
+                            let
+                                ( code, description ) =
+                                    case region of
+                                        Just regionDetails ->
+                                            ( langDetails.code ++ "-" ++ regionDetails.code
+                                            , langDetails.description ++ " (" ++ regionDetails.description ++ ")"
+                                            )
+
+                                        Nothing ->
+                                            ( langDetails.code, langDetails.description )
+                            in
+                            if toUpdate.code == code then
+                                { toUpdate | description = description }
+
+                            else
+                                toUpdate
+
+                        Nothing ->
+                            toUpdate
+            in
+            ( { model | knownLanguages = model.knownLanguages |> List.map updateDescription }, Cmd.none )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -241,14 +283,14 @@ generalNav model =
                 Button.Padded
                 "Decks"
                 (Icon.search |> Icon.viewIcon |> Just)
-                (DecksRoute.Browse 1 Nothing |> Decks |> changePageIfNot)
+                (DecksRoute.Browse { page = 1, language = Nothing, search = Nothing } |> Decks |> changePageIfNot)
 
         parts =
             case model.auth of
                 Just auth ->
                     [ publicDecks
                     , title
-                    , Html.div []
+                    , Html.div [ HtmlA.class "user-nav" ]
                         [ Button.view Button.Standard
                             Button.Padded
                             "My Decks"

@@ -1,10 +1,7 @@
-@use "edit/import";
+@use "edit/_import";
+@use "edit/_language-selector";
 
 .edit {
-  display: flex;
-  flex-direction: column;
-  margin: 3em;
-
   .cards {
     display: flex;
   }

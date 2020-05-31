@@ -89,9 +89,9 @@ onRouteChanged route oldModel =
                         Nothing ->
                             ( model, redirectTo model.navKey (Login Nothing) )
 
-                Decks.Browse page search ->
+                Decks.Browse query ->
                     ( model
-                    , Api.browseDecks page search (Browse.Page search page >> Browse.ReceiveDecks >> BrowseMsg)
+                    , Api.browseDecks query (Browse.Page query >> Browse.ReceiveDecks >> BrowseMsg)
                     )
 
         NotFound _ ->
@@ -153,7 +153,7 @@ fromUrl url =
 parser : Parser (Route -> c) c
 parser =
     oneOf
-        [ top |> map (Decks (Decks.Browse 1 Nothing))
+        [ top |> map (Browse.Query 1 Nothing Nothing |> Decks.Browse |> Decks)
         , s "sign-in" </> fragment Login
         , s "profile" |> map Profile
         , s "decks" </> Decks.parser |> map Decks

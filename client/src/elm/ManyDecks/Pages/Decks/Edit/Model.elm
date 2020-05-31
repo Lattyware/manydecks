@@ -14,6 +14,7 @@ import Cards.Response exposing (Response)
 import ManyDecks.Deck exposing (Deck)
 import ManyDecks.Pages.Decks.Edit.CallEditor.Model as CallEditor
 import ManyDecks.Pages.Decks.Edit.Import.Model as Import
+import ManyDecks.Pages.Decks.Edit.LanguageSelector as LanguageSelector
 
 
 type CardEditor
@@ -34,6 +35,7 @@ type Msg
     | SetImportVisible Bool
     | Import
     | UpdateImportText String
+    | LanguageSelectorMsg LanguageSelector.Msg
     | ClearErrors
 
 
@@ -47,6 +49,7 @@ type alias Model =
     , deletionEnabled : Bool
     , importer : Maybe Import.Model
     , saving : Bool
+    , languageSelector : LanguageSelector.Model
     }
 
 
@@ -59,6 +62,7 @@ type UpdateEditor
 type Change
     = ChangeName String String
     | ChangePublic Bool
+    | ChangeLanguage (Maybe String) (Maybe String)
     | CallChange (CardChange Call)
     | ResponseChange (CardChange Response)
 

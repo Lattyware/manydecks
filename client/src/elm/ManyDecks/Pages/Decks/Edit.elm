@@ -22,6 +22,7 @@ import ManyDecks.Pages.Decks.Edit.CallEditor as CallEditor
 import ManyDecks.Pages.Decks.Edit.Change as Change
 import ManyDecks.Pages.Decks.Edit.Import as Import
 import ManyDecks.Pages.Decks.Edit.Import.Model as Import
+import ManyDecks.Pages.Decks.Edit.LanguageSelector as LanguageSelector
 import ManyDecks.Pages.Decks.Edit.Model exposing (..)
 import ManyDecks.Pages.Decks.Messages as Decks
 import ManyDecks.Ports as Ports
@@ -33,18 +34,25 @@ import Material.TextField as TextField
 import Time
 
 
-init : Deck -> Model
+init : Deck -> ( Model, Cmd msg )
 init deck =
-    { deck = deck
-    , editing = Nothing
-    , changes = []
-    , undoStack = []
-    , redoStack = []
-    , errors = []
-    , deletionEnabled = False
-    , importer = Nothing
-    , saving = False
-    }
+    let
+        ( languageSelector, cmd ) =
+            LanguageSelector.init deck.language
+    in
+    ( { deck = deck
+      , editing = Nothing
+      , changes = []
+      , undoStack = []
+      , redoStack = []
+      , errors = []
+      , deletionEnabled = False
+      , importer = Nothing
+      , saving = False
+      , languageSelector = languageSelector
+      }
+    , cmd
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -222,6 +230,26 @@ update msg model =
         ClearErrors ->
             ( { model | errors = [] }, Cmd.none )
 
+        LanguageSelectorMsg languageSelectorMsg ->
+            let
+                ( languageSelector, cmd ) =
+                    LanguageSelector.update languageSelectorMsg model.languageSelector
+
+                newLang =
+                    languageSelector |> LanguageSelector.value
+
+                newModel =
+                    { model | languageSelector = languageSelector }
+
+                change =
+                    if newLang /= model.deck.language then
+                        ChangeLanguage model.deck.language newLang |> applyChange
+
+                    else
+                        identity
+            in
+            ( change newModel, cmd )
+
 
 wrap : Msg -> Global.Msg
 wrap =
@@ -394,9 +422,9 @@ view code model =
                         Nothing
             in
             List.concat
-                [ [ Card.view [ HtmlA.class "edit" ]
+                [ [ Card.view [ HtmlA.class "page edit" ]
                         [ actions
-                        , details (model |> editingName |> Maybe.withDefault deck.name) model.deck.public
+                        , details (model |> editingName |> Maybe.withDefault deck.name) model.languageSelector model.deck.public
                         , Html.div [ HtmlA.class "cards" ]
                             [ calls deck.calls
                             , responses deck.responses
@@ -443,8 +471,11 @@ subscriptions code model =
 
             else
                 Sub.none
+
+        languageSelector =
+            LanguageSelector.subscriptions (always Global.NoOp) (LanguageSelectorMsg >> wrap)
     in
-    Sub.batch [ editor, autoSave ]
+    Sub.batch [ editor, autoSave, languageSelector ]
 
 
 viewError : EditError -> Html Global.Msg
@@ -468,8 +499,8 @@ editingName model =
             Nothing
 
 
-details : String -> Bool -> Html Global.Msg
-details name public =
+details : String -> LanguageSelector.Model -> Bool -> Html Global.Msg
+details name languageSelector public =
     let
         change =
             ChangePublic >> ApplyChange >> wrap |> Just
@@ -481,6 +512,7 @@ details name public =
             (UpdateName >> Edit >> wrap |> Just)
             (NameEditor name name |> StartEditing |> wrap)
             (EndEditing |> wrap)
+        , LanguageSelector.view (LanguageSelectorMsg >> wrap) languageSelector
         , Html.p []
             [ Switch.view (Html.span [] [ Html.text "Listed: Show this deck publicly for people to find." ]) public change ]
         , Html.p []

@@ -1,4 +1,7 @@
-module ManyDecks.Pages.Decks exposing (..)
+module ManyDecks.Pages.Decks exposing
+    ( update
+    , view
+    )
 
 import Browser.Navigation as Navigation
 import Cards.Deck as FileDeck
@@ -77,8 +80,11 @@ update msg model =
 
                             else
                                 route |> GlobalRoute.toUrl |> Navigation.pushUrl model.navKey
+
+                        ( edit, editCmd ) =
+                            d |> Edit.init
                     in
-                    ( { model | edit = d |> Edit.init |> Just }, changeRouteIfNeeded )
+                    ( { model | edit = edit |> Just }, Cmd.batch [ changeRouteIfNeeded, editCmd ] )
 
                 Nothing ->
                     ( model, GlobalRoute.redirectTo model.navKey (Route.Decks (Route.Edit code)) )
@@ -160,8 +166,11 @@ update msg model =
 
                             else
                                 route |> GlobalRoute.toUrl |> Navigation.pushUrl model.navKey
+
+                        ( edit, editCmd ) =
+                            d |> Edit.init
                     in
-                    ( { model | edit = d |> Edit.init |> Just }, changeRouteIfNeeded )
+                    ( { model | edit = edit |> Just }, Cmd.batch [ changeRouteIfNeeded, editCmd ] )
 
                 Nothing ->
                     ( model, GlobalRoute.redirectTo model.navKey (Route.Decks (Route.View code)) )
@@ -184,15 +193,15 @@ view route model =
         Route.View code ->
             case model.edit of
                 Just edit ->
-                    View.view code model.auth edit
+                    View.view code model.auth model.knownLanguages edit
 
                 Nothing ->
                     [ Html.div [] [ Icon.spinner |> Icon.viewStyled [ Icon.spin ] ] ]
 
-        Browse page search ->
+        Browse query ->
             case model.browse of
                 Just browse ->
-                    Browse.view model.auth page search browse
+                    Browse.view model.auth model.knownLanguages query browse
 
                 Nothing ->
                     [ Html.div [] [ Icon.spinner |> Icon.viewStyled [ Icon.spin ] ] ]

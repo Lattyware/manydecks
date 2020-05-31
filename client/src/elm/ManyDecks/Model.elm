@@ -7,6 +7,7 @@ import Browser.Navigation as Navigation
 import ManyDecks.Auth exposing (Auth)
 import ManyDecks.Auth.Methods as Auth
 import ManyDecks.Error.Model exposing (Error)
+import ManyDecks.Language as Language
 import ManyDecks.Pages.Decks.Browse.Model as Browse
 import ManyDecks.Pages.Decks.Edit.Model as Edit
 import ManyDecks.Pages.Decks.Model as Decks
@@ -25,6 +26,8 @@ type alias Model =
     , route : Route
     , error : Maybe Error
     , origin : String
+    , browserLanguage : String
+    , knownLanguages : List Language.Described
 
     -- Login
     , auth : Maybe Auth

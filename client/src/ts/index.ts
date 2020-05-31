@@ -1,6 +1,7 @@
 import "../../elm-material/src/ts/material";
 import * as Json5 from "json5";
 import { Elm } from "src/elm/ManyDecks";
+import * as Languages from "./languages";
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ const main = async () => {
   const app: Elm.ManyDecks.App = Elm.ManyDecks.init({
     flags: {
       auth: savedAuth === null ? null : JSON.parse(savedAuth),
+      lang: navigator.language,
     },
   });
 
@@ -103,6 +105,13 @@ const main = async () => {
       }
     }
   });
+
+  Languages.registerPorts(
+    app.ports.languageSearch,
+    app.ports.languageResults,
+    app.ports.languageExpand,
+    app.ports.languageExpanded
+  );
 };
 
 main().catch(console.error);

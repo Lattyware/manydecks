@@ -18,11 +18,11 @@ import Material.Card as Card
 
 
 view : User.Id -> Model -> List (Html Global.Msg)
-view viewing { auth, decks } =
+view viewing { browserLanguage, auth, decks, knownLanguages } =
     let
         deck codeAndSummary =
             ( codeAndSummary.code |> Deck.codeToString
-            , Summary.view auth codeAndSummary
+            , Summary.view auth knownLanguages codeAndSummary
             )
 
         renderedDecks =
@@ -34,7 +34,7 @@ view viewing { auth, decks } =
                     Icon.spinner |> Icon.viewStyled [ Icon.spin ]
 
         newDeckAction a =
-            Deck.empty a |> NewDeck |> Global.DecksMsg
+            Deck.empty browserLanguage a |> NewDeck |> Global.DecksMsg
 
         newDeck =
             Button.view Button.Raised

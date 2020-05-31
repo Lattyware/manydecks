@@ -32,6 +32,7 @@ body {
   display: flex;
   flex-direction: column;
   margin: 3em;
+  max-width: calc(100% - 6em);
 }
 
 .content {
@@ -63,9 +64,17 @@ nav {
   --mdc-theme-primary: #ffffff;
   color: #ffffff;
 
+  text-align: center;
+
   mwc-button {
     align-self: inherit;
     margin: 1em;
+  }
+
+  .user-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 

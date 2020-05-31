@@ -33,6 +33,13 @@ If you wish to deploy your own version, the easiest way is to use the docker ima
 [docker-client]: https://hub.docker.com/r/massivedecks/manydecks-client
 [docker-server]: https://hub.docker.com/r/massivedecks/manydecks-server
 
+## APIs
+
+If you would like to use Many Decks' data for your application, we welcome that, but please do get in contact before 
+directing any non-trivial (i.e: other than testing) load on us, as currently we don't expect anyone to depend on 
+the service, so it may cause issues for our servers, and we may change the API under your feet—breaking your 
+application.
+
 ## Contributing
 
 If you have any problems with the editor, please [raise an issue][issue]. If you would like to help develop it, pull

@@ -53,7 +53,6 @@
         em {
           white-space: pre-wrap;
           overflow-wrap: break-word;
-          word-break: break-all;
           text-decoration: inherit;
         }
 
@@ -62,10 +61,6 @@
         }
 
         .slot {
-          display: inline flex;
-          flex-grow: 1;
-          flex-basis: 3em;
-
           &.filled {
             display: contents;
             text-decoration: underline;
@@ -73,6 +68,8 @@
 
           &.empty {
             flex-grow: 1;
+            flex-shrink: 0;
+            flex-basis: 3em;
             min-height: 1.15em;
             border-bottom: 0.075em solid var(--fg);
             margin-bottom: 0.2em; // line-height - font-size

@@ -98,6 +98,10 @@ const main = async (): Promise<void> => {
     });
   });
 
+  app.get("/api/languages", async (req, res) => {
+    res.json(await store.languages());
+  });
+
   app.post("/api/users", async (req, res) => {
     if (req.body.token !== undefined) {
       const claims = auth.validate(req.body.token);
@@ -153,9 +157,10 @@ const main = async (): Promise<void> => {
 
   app.get("/api/decks/browse", async (req, res) => {
     const page = req.query.p as string;
+    const language = req.query.l as string;
     const query = req.query.q as string;
-    const decks = await store.browse(query, parseInt(page));
-    res.json(Array.from(decks));
+    const decks = await store.browse(query, language, parseInt(page));
+    res.json([...decks]);
   });
 
   app.get("/api/decks/:deckCode", async (req, res) => {
@@ -193,7 +198,7 @@ const main = async (): Promise<void> => {
     }
     const userId = req.params.userId;
     const decks = await store.getSummariesForUser(userId, requester !== userId);
-    res.json(Array.from(decks));
+    res.json([...decks]);
   });
 
   app.post("/api/backup", async (req, res) => {
