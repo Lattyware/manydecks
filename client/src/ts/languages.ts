@@ -36,7 +36,6 @@ function* index(type: keyof typeof indexes): Iterable<CodeAndDescriptions> {
 
 const searchConfig = {
   keys: ["descriptions"],
-  minMatchCharLength: 3,
   threshold: 0.15,
   distance: 10,
   includeMatches: true,
