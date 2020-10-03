@@ -74,7 +74,7 @@ export class Store {
     });
   }
 
-  public findOrCreateUser: (
+  public findOrCreateGoogleUser: (
     googleId: string,
     googleName?: string
   ) => Promise<User.User> = async (googleId, googleName) =>

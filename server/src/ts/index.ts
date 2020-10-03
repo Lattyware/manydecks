@@ -55,8 +55,8 @@ const main = async (): Promise<void> => {
     config.auth.twitch === undefined
       ? undefined
       : Jwks({
-          jwksUri: config.auth.twitch.jwk,
-        });
+        jwksUri: config.auth.twitch.jwk,
+      });
 
   const verifyWith = async (
     token: string,
@@ -120,7 +120,7 @@ const main = async (): Promise<void> => {
       });
       const payload = ticket.getPayload();
       if (payload !== undefined) {
-        const { id, name } = await store.findOrCreateUser(
+        const { id, name } = await store.findOrCreateGoogleUser(
           payload.sub,
           payload.name
         );
@@ -213,9 +213,8 @@ const main = async (): Promise<void> => {
         d.author = d.author.name;
         return {
           content: Json5.stringify(c, undefined, 2),
-          name: `${d.name.replace(/\s/g, "-")}-${
-            d.language
-          }-${Uuid.v4()}.deck.json5`,
+          name: `${d.name.replace(/\s/g, "-")}-${d.language
+            }-${Uuid.v4()}.deck.json5`,
         };
       }),
       filename: "backup.zip",
