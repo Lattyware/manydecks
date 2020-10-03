@@ -9,7 +9,7 @@ volumes:
 services:
   storage:
     container_name: postgres
-    image: "postgres:12"
+    image: "postgres:13"
     environment:
       - POSTGRES_USER=manydecks
       - POSTGRES_PASSWORD=manydecks
