@@ -38,6 +38,7 @@
 
     // Allows a user ot sign in via Twitch.
     // See https://dev.twitch.tv/docs/authentication#registration to obtain these details.
+    // Note you need to use https://many.decks.url/sign-in/ (replacing with a real URL) as the Redirect URL.
     // twitch: {
     //   jwk: "https://id.twitch.tv/oauth2/keys",
     //   id: "CHANGE ME",

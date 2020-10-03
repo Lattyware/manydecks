@@ -62,7 +62,7 @@ requestUrl origin { id } =
                 |> Url.string "claims"
 
         redirectUri =
-            origin |> Url.string "redirect_uri"
+            Url.crossOrigin origin [ "sign-in" ] [] |> Url.string "redirect_uri"
 
         responseType =
             "id_token" |> Url.string "response_type"
