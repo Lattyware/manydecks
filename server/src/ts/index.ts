@@ -13,13 +13,13 @@ import * as Store from "./store";
 import * as Auth from "./user/auth";
 import { default as GoogleAuth } from "google-auth-library";
 import * as Uuid from "uuid";
-// @ts-ignore
 import { default as Zip } from "express-easy-zip";
 import * as Errors from "./errors";
 import { default as Jwks } from "jwks-rsa";
 import * as util from "util";
 import { default as Jwt } from "jsonwebtoken";
 import { AuthFailure } from "./errors";
+import { CreatedOrFoundUser } from "./store";
 
 interface TwitchClaims {
   sub: string;
@@ -55,8 +55,8 @@ const main = async (): Promise<void> => {
     config.auth.twitch === undefined
       ? undefined
       : Jwks({
-        jwksUri: config.auth.twitch.jwk,
-      });
+          jwksUri: config.auth.twitch.jwk,
+        });
 
   const verifyWith = async (
     token: string,
@@ -67,13 +67,15 @@ const main = async (): Promise<void> => {
       const key = await getPubKey(header.kid as string);
       return key.getPublicKey();
     };
-    const decoded = Jwt.decode(token, { complete: true });
-    if (decoded === null || !decoded.hasOwnProperty("header")) {
+    const decoded = Jwt.decode(token, { complete: true }) as {
+      header: Jwt.JwtHeader;
+    };
+    if (decoded !== null && decoded.hasOwnProperty("header")) {
+      const key = await keyFromHeader(decoded.header);
+      return Jwt.verify(token, key, { algorithms: ["RS256"] }) as TwitchClaims;
+    } else {
       throw new AuthFailure();
     }
-    // @ts-ignore
-    const key = await keyFromHeader(decoded.header);
-    return Jwt.verify(token, key, { algorithms: ["RS256"] }) as TwitchClaims;
   };
 
   const app = express();
@@ -103,6 +105,23 @@ const main = async (): Promise<void> => {
   });
 
   app.post("/api/users", async (req, res) => {
+    function foundOrCreatedUser({
+      result,
+      user: { id, name },
+    }: Store.CreatedOrFoundUser) {
+      switch (result) {
+        case "Created":
+          res.status(HttpStatus.CREATED);
+          break;
+        case "Found":
+          res.status(HttpStatus.OK);
+          break;
+        default:
+          Store.unknownResult(result);
+          break;
+      }
+      res.json({ token: auth.sign({ sub: id }), name });
+    }
     if (req.body.token !== undefined) {
       const claims = auth.validate(req.body.token);
       const id = claims.sub;
@@ -120,33 +139,29 @@ const main = async (): Promise<void> => {
       });
       const payload = ticket.getPayload();
       if (payload !== undefined) {
-        const { id, name } = await store.findOrCreateGoogleUser(
-          payload.sub,
-          payload.name
+        foundOrCreatedUser(
+          await store.findOrCreateGoogleUser(payload.sub, payload.name)
         );
-        res.json({ token: auth.sign({ sub: id }), name });
-        return;
       }
     } else if (req.body.twitch) {
       if (twitch === undefined || config.auth.twitch === undefined) {
         throw new Errors.AuthFailure();
       }
       const claims = await verifyWith(req.body.twitch.id, twitch);
-      const { id, name } = await store.findOrCreateTwitchUser(
-        claims.sub,
-        claims.preferred_username
+      foundOrCreatedUser(
+        await store.findOrCreateTwitchUser(
+          claims.sub,
+          claims.preferred_username
+        )
       );
-      res.json({ token: auth.sign({ sub: id }), name });
-      return;
     } else if (req.body.guest) {
       if (config.auth.guest === undefined) {
         throw new Errors.AuthFailure();
       }
-      const { id, name } = await store.findOrCreateGuestUser();
-      res.json({ token: auth.sign({ sub: id }), name });
-      return;
+      foundOrCreatedUser(await store.findOrCreateGuestUser());
+    } else {
+      throw new Errors.AuthFailure();
     }
-    throw new Errors.AuthFailure();
   });
 
   app.delete("/api/users", async (req, res) => {
@@ -204,7 +219,6 @@ const main = async (): Promise<void> => {
   app.post("/api/backup", async (req, res) => {
     const claims = auth.validate(req.body.token);
     const files = await store.getDecks(claims.sub);
-    // @ts-ignore
     res.zip({
       files: files.map((c) => {
         const d: any = c;
@@ -213,8 +227,9 @@ const main = async (): Promise<void> => {
         d.author = d.author.name;
         return {
           content: Json5.stringify(c, undefined, 2),
-          name: `${d.name.replace(/\s/g, "-")}-${d.language
-            }-${Uuid.v4()}.deck.json5`,
+          name: `${d.name.replace(/\s/g, "-")}-${
+            d.language
+          }-${Uuid.v4()}.deck.json5`,
         };
       }),
       filename: "backup.zip",

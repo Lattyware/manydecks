@@ -84,3 +84,13 @@ ul.deck-list {
     }
   }
 }
+
+#no-decks {
+  display: flex;
+  opacity: 0.6;
+  align-items: center;
+
+  p {
+    margin-left: 0.5em;
+  }
+}

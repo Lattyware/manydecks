@@ -1,5 +1,5 @@
 {
-  "include": ["./src/ts/**/*"],
+  "include": ["./src/ts/**/*", "./types/**/*"],
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
@@ -19,6 +19,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "typeRoots": ["./types"]
   }
 }

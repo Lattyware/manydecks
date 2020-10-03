@@ -8,8 +8,21 @@ import * as Errors from "./errors";
 import * as uuid from "uuid";
 import * as User from "./user";
 import * as Code from "./deck/code";
-import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
-import { Console } from "winston/lib/winston/transports";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  colors,
+  animals,
+} from "unique-names-generator";
+
+export interface CreatedOrFoundUser {
+  result: "Created" | "Found";
+  user: User.User;
+}
+
+export function unknownResult(result: never): never {
+  throw new Error(`Unknown result: "${result}".`);
+}
 
 const migrateConfig = {
   logger: (msg: string) => Logging.logger.info(msg),
@@ -26,8 +39,8 @@ export const init = async (config: Pg.PoolConfig): Promise<Store> => {
     const db = config.database
       ? config.database
       : config.user
-        ? config.user
-        : "manydecks";
+      ? config.user
+      : "manydecks";
     await Migrate.createDb(db, { client }, migrateConfig);
     await Migrate.migrate({ client }, "src/sql", migrateConfig);
 
@@ -70,64 +83,66 @@ export class Store {
 
   generateUsername(): string {
     return uniqueNamesGenerator({
-      dictionaries: [adjectives, colors, animals]
+      dictionaries: [adjectives, colors, animals],
     });
   }
 
   public findOrCreateGoogleUser: (
     googleId: string,
     googleName?: string
-  ) => Promise<User.User> = async (googleId, googleName) =>
-      await this.withClient(async (client) => {
-        const existingResult = await client.query(
-          `SELECT id, name FROM manydecks.users WHERE google_id = $1;`,
-          [googleId]
+  ) => Promise<CreatedOrFoundUser> = async (googleId, googleName) =>
+    await this.withClient(async (client) => {
+      const existingResult = await client.query(
+        `SELECT id, name FROM manydecks.users WHERE google_id = $1;`,
+        [googleId]
+      );
+      if (existingResult.rowCount > 0) {
+        const [user] = existingResult.rows;
+        return { result: "Found", user: { id: user.id, name: user.name } };
+      } else {
+        const newId = User.id();
+        const newName =
+          googleName === undefined ? this.generateUsername() : googleName;
+        await client.query(
+          `INSERT INTO manydecks.users (id, name, google_id) VALUES ($1, $2, $3);`,
+          [newId, newName, googleId]
         );
-        if (existingResult.rowCount > 0) {
-          const [user] = existingResult.rows;
-          return { id: user.id, name: user.name };
-        } else {
-          const newId = User.id();
-          const newName = googleName === undefined ? this.generateUsername() : googleName;
-          await client.query(
-            `INSERT INTO manydecks.users (id, name, google_id) VALUES ($1, $2, $3);`,
-            [newId, newName, googleId]
-          );
-          return { id: newId, name: newName };
-        }
-      });
+        return { result: "Created", user: { id: newId, name: newName } };
+      }
+    });
 
   public findOrCreateTwitchUser: (
     twitchId: string,
     twitchName?: string
-  ) => Promise<User.User> = async (twitchId, twitchName) =>
-      await this.withClient(async (client) => {
-        const existingResult = await client.query(
-          `SELECT id, name FROM manydecks.users WHERE twitch_id = $1;`,
-          [twitchId]
+  ) => Promise<CreatedOrFoundUser> = async (twitchId, twitchName) =>
+    await this.withClient(async (client) => {
+      const existingResult = await client.query(
+        `SELECT id, name FROM manydecks.users WHERE twitch_id = $1;`,
+        [twitchId]
+      );
+      if (existingResult.rowCount > 0) {
+        const [user] = existingResult.rows;
+        return { result: "Found", user: { id: user.id, name: user.name } };
+      } else {
+        const newId = User.id();
+        const newName =
+          twitchName === undefined ? this.generateUsername() : twitchName;
+        await client.query(
+          `INSERT INTO manydecks.users (id, name, twitch_id) VALUES ($1, $2, $3);`,
+          [newId, newName, twitchId]
         );
-        if (existingResult.rowCount > 0) {
-          const [user] = existingResult.rows;
-          return { id: user.id, name: user.name };
-        } else {
-          const newId = User.id();
-          const newName = twitchName === undefined ? this.generateUsername() : twitchName;
-          await client.query(
-            `INSERT INTO manydecks.users (id, name, twitch_id) VALUES ($1, $2, $3);`,
-            [newId, newName, twitchId]
-          );
-          return { id: newId, name: newName };
-        }
-      });
+        return { result: "Created", user: { id: newId, name: newName } };
+      }
+    });
 
-  public findOrCreateGuestUser: () => Promise<User.User> = async () =>
+  public findOrCreateGuestUser: () => Promise<CreatedOrFoundUser> = async () =>
     await this.withClient(async (client) => {
       const existingResult = await client.query(
         `SELECT id, name FROM manydecks.users WHERE is_guest;`
       );
       if (existingResult.rowCount > 0) {
         const [user] = existingResult.rows;
-        return { id: user.id, name: user.name };
+        return { result: "Found", user: { id: user.id, name: user.name } };
       } else {
         const newId = User.id();
         const newName = this.generateUsername();
@@ -135,7 +150,7 @@ export class Store {
           `INSERT INTO manydecks.users (id, name, is_guest) VALUES ($1, $2, True);`,
           [newId, newName]
         );
-        return { id: newId, name: newName };
+        return { result: "Created", user: { id: newId, name: newName } };
       }
     });
 
@@ -159,27 +174,24 @@ export class Store {
     d: Deck.EditableDeck,
     user: string
   ) => Promise<number> = async (d, user) =>
-      await this.withClient(async (client) => {
-        let deck;
-        try {
-          deck = Deck.validate(d);
-        } catch (error) {
-          throw new Errors.BadDeck();
-        }
-        const insert = await client.query(
-          `
+    await this.withClient(async (client) => {
+      let deck;
+      try {
+        deck = Deck.validate(d);
+      } catch (error) {
+        throw new Errors.BadDeck();
+      }
+      const insert = await client.query(
+        `
         INSERT INTO manydecks.decks (deck, author) VALUES ($1, $2) RETURNING id;
       `,
-          [deck, user]
-        );
-        const [inserted] = insert.rows;
-        return inserted.id;
-      });
+        [deck, user]
+      );
+      const [inserted] = insert.rows;
+      return inserted.id;
+    });
 
-  public getDeck: (id: number, user?: string) => Promise<Deck.Deck> = async (
-    id,
-    user = undefined
-  ) =>
+  public getDeck: (id: number) => Promise<Deck.Deck> = async (id) =>
     await this.withClient(async (client) => {
       const meta = await client.query(
         `
@@ -254,7 +266,7 @@ export class Store {
       };
     });
 
-  private static * summariesFromRows(
+  private static *summariesFromRows(
     result: Pg.QueryResult
   ): Iterable<Deck.CodeAndSummary> {
     for (const deck of result.rows) {
@@ -284,42 +296,42 @@ export class Store {
     user,
     publicOnly = true
   ) =>
-      await this.withClient(async (client) => {
-        const result = await client.query(
-          `
+    await this.withClient(async (client) => {
+      const result = await client.query(
+        `
         SELECT id, name, author_id, author, language, calls, responses, public, version
         FROM manydecks.summaries WHERE summaries.author_id = $1 AND (NOT $2 OR summaries.public)
         ORDER BY id DESC;
         `,
-          [user, publicOnly]
-        );
-        return Store.summariesFromRows(result);
-      });
+        [user, publicOnly]
+      );
+      return Store.summariesFromRows(result);
+    });
 
   public browse: (
     query?: string,
     language?: string,
     page?: number
   ) => Promise<Iterable<Deck.CodeAndSummary>> = async (query, language, page) =>
-      await this.withClient(async (client) => {
-        const pageSize = 20;
-        const p = page === undefined ? 0 : page;
-        const l = language === undefined ? null : language;
-        let result;
-        if (query === undefined) {
-          result = await client.query(
-            `
+    await this.withClient(async (client) => {
+      const pageSize = 20;
+      const p = page === undefined ? 0 : page;
+      const l = language === undefined ? null : language;
+      let result;
+      if (query === undefined) {
+        result = await client.query(
+          `
             SELECT id, name, author_id, author, language, calls, responses, public, version
             FROM manydecks.summaries 
             WHERE summaries.public AND ($3::text IS NULL OR summaries.language = $3::text)
             ORDER BY id DESC 
             OFFSET $1::int * $2::int LIMIT $2
           `,
-            [p, pageSize, l]
-          );
-        } else {
-          result = await client.query(
-            `
+          [p, pageSize, l]
+        );
+      } else {
+        result = await client.query(
+          `
             SELECT id, name, author_id, author, language, calls, responses, public, version, ts_rank_cd(deck_search , query) AS rank
             FROM manydecks.summaries, to_tsquery($4) query 
             WHERE summaries.public  AND ($3::text IS NULL OR summaries.language = $3::text)
@@ -327,49 +339,49 @@ export class Store {
             ORDER BY rank DESC 
             OFFSET $1::int * $2::int LIMIT $2
           `,
-            [p, pageSize, l, query]
-          );
-        }
-        return Store.summariesFromRows(result);
-      });
+          [p, pageSize, l, query]
+        );
+      }
+      return Store.summariesFromRows(result);
+    });
 
   public updateDeck: (
     id: number,
     user: string,
     patch: Patch.Operation[]
   ) => Promise<Deck.Deck> = async (id, user, patch) =>
-      await this.withClient(async (client) => {
-        const deck = await this.getDeck(id);
-        try {
-          JsonPatch.applyPatch(deck, patch);
-        } catch (error) {
-          if (
-            error instanceof JsonPatch.JsonPatchError &&
-            error.name === "TEST_OPERATION_FAILED"
-          ) {
-            throw new Errors.PatchTestFailed();
-          } else {
-            throw new Errors.BadPatch();
-          }
-        }
-        let updated;
-        try {
-          updated = Deck.validate({
-            ...deck,
-            author: undefined,
-            version: undefined,
-          });
-        } catch (error) {
+    await this.withClient(async (client) => {
+      const deck = await this.getDeck(id);
+      try {
+        JsonPatch.applyPatch(deck, patch);
+      } catch (error) {
+        if (
+          error instanceof JsonPatch.JsonPatchError &&
+          error.name === "TEST_OPERATION_FAILED"
+        ) {
+          throw new Errors.PatchTestFailed();
+        } else {
           throw new Errors.BadPatch();
         }
-        await client.query(
-          `
+      }
+      let updated;
+      try {
+        updated = Deck.validate({
+          ...deck,
+          author: undefined,
+          version: undefined,
+        });
+      } catch (error) {
+        throw new Errors.BadPatch();
+      }
+      await client.query(
+        `
         UPDATE manydecks.decks SET deck = $1 WHERE id = $2;
       `,
-          [updated, id]
-        );
-        return deck;
-      });
+        [updated, id]
+      );
+      return deck;
+    });
 
   public deleteDeck: (id: number, user: string) => Promise<void> = async (
     id,
