@@ -27,6 +27,12 @@ view viewing { browserLanguage, auth, decks, knownLanguages } =
 
         renderedDecks =
             case decks of
+                Just [] ->
+                    Html.div [ HtmlA.id "no-decks" ]
+                        [ Icon.ghost |> Icon.viewIcon
+                        , Html.p [] [ Html.text "You haven't made any decks yet, create or upload one below." ]
+                        ]
+
                 Just d ->
                     d |> List.map deck |> HtmlK.ul [ HtmlA.class "deck-list" ]
 

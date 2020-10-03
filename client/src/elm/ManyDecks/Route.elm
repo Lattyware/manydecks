@@ -37,7 +37,7 @@ onRouteChanged route oldModel =
                             Twitch.authPayload frag
 
                         signIn payload =
-                            Api.signIn payload (Login.SetAuth >> LoginMsg)
+                            Api.signIn payload (\isNewAccount auth -> Login.SetAuth isNewAccount auth |> LoginMsg)
                     in
                     ( model
                     , parsedPayload

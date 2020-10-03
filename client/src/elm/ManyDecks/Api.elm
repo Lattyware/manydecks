@@ -45,7 +45,7 @@ getLanguages : (List String -> Msg) -> Cmd Msg
 getLanguages handleSuccess =
     Http.get
         { url = apiUrl [ "languages" ]
-        , expect = expectJsonOrError handleSuccess (Json.Decode.list Json.Decode.string)
+        , expect = expectJsonOrError (Tuple.second >> handleSuccess) (Json.Decode.list Json.Decode.string)
         }
 
 
@@ -53,16 +53,20 @@ getAuthMethods : (Auth.Methods -> Msg) -> Cmd Msg
 getAuthMethods handleSuccess =
     Http.get
         { url = apiUrl [ "auth" ]
-        , expect = expectJsonOrError handleSuccess Auth.decode
+        , expect = expectJsonOrError (Tuple.second >> handleSuccess) Auth.decode
         }
 
 
-signIn : Json.Value -> (Auth -> Msg) -> Cmd Msg
+signIn : Json.Value -> (Bool -> Auth -> Msg) -> Cmd Msg
 signIn authPayload handleSuccess =
+    let
+        toMsg ( statusCode, auth ) =
+            handleSuccess (statusCode == 201) auth
+    in
     Http.post
         { url = apiUrl [ "users" ]
         , body = authPayload |> Http.jsonBody
-        , expect = expectJsonOrError handleSuccess Auth.decoder
+        , expect = expectJsonOrError toMsg Auth.decoder
         }
 
 
@@ -70,7 +74,7 @@ getDeck : Deck.Code -> (Deck -> Msg) -> Cmd Msg
 getDeck code toMsg =
     Http.get
         { url = apiUrl [ "decks", code |> Deck.codeToString ]
-        , expect = expectJsonOrError toMsg Deck.decode
+        , expect = expectJsonOrError (Tuple.second >> toMsg) Deck.decode
         }
 
 
@@ -88,7 +92,7 @@ getDecks id token toMsg =
     Http.post
         { url = apiUrl [ "decks", "by", id ]
         , body = body |> Json.object |> Http.jsonBody
-        , expect = expectJsonOrError toMsg (Decks.codeAndSummaryDecoder |> Json.Decode.list)
+        , expect = expectJsonOrError (Tuple.second >> toMsg) (Decks.codeAndSummaryDecoder |> Json.Decode.list)
         }
 
 
@@ -103,7 +107,7 @@ browseDecks { page, language, search } toMsg =
     in
     Http.get
         { url = queryApiUrl [ "decks", "browse" ] (queries |> List.filterMap identity)
-        , expect = expectJsonOrError toMsg (Decks.codeAndSummaryDecoder |> Json.Decode.list)
+        , expect = expectJsonOrError (Tuple.second >> toMsg) (Decks.codeAndSummaryDecoder |> Json.Decode.list)
         }
 
 
@@ -117,7 +121,7 @@ createDeck token d toMsg =
             ]
                 |> Json.object
                 |> Http.jsonBody
-        , expect = expectJsonOrError toMsg Deck.codeDecoder
+        , expect = expectJsonOrError (Tuple.second >> toMsg) Deck.codeDecoder
         }
 
 
@@ -128,7 +132,7 @@ deleteDeck token code toMsg =
         , headers = []
         , url = apiUrl [ "decks", code |> Deck.codeToString ]
         , body = [ ( "token", token |> Json.string ) ] |> Json.object |> Http.jsonBody
-        , expect = expectJsonOrError toMsg Deck.codeDecoder
+        , expect = expectJsonOrError (Tuple.second >> toMsg) Deck.codeDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -146,7 +150,7 @@ save token code patch toMsg =
             ]
                 |> Json.object
                 |> Http.jsonBody
-        , expect = expectJsonOrError toMsg Deck.decode
+        , expect = expectJsonOrError (Tuple.second >> toMsg) Deck.decode
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -174,7 +178,7 @@ saveProfile token name toMsg =
             ]
                 |> Json.object
                 |> Http.jsonBody
-        , expect = expectJsonOrError toMsg Auth.decoder
+        , expect = expectJsonOrError (Tuple.second >> toMsg) Auth.decoder
         }
 
 
@@ -185,17 +189,19 @@ deleteProfile token toMsg =
         , headers = []
         , url = apiUrl [ "users" ]
         , body = [ ( "token", token |> Json.string ) ] |> Json.object |> Http.jsonBody
-        , expect = expectJsonOrError toMsg (Json.Decode.succeed ())
+        , expect = expectJsonOrError (Tuple.second >> toMsg) (Json.Decode.succeed ())
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
-expectJsonOrError : (value -> Msg) -> Json.Decode.Decoder value -> Http.Expect Msg
+expectJsonOrError : (( Int, value ) -> Msg) -> Json.Decode.Decoder value -> Http.Expect Msg
 expectJsonOrError toMsg decoder =
     let
-        onGoodStatus =
-            Json.Decode.decodeString decoder >> Result.mapError (Error.BadResponse >> Error.Application)
+        onGoodStatus statusCode =
+            Json.Decode.decodeString decoder
+                >> Result.map (Tuple.pair statusCode)
+                >> Result.mapError (Error.BadResponse >> Error.Application)
 
         onBadStatus body =
             case body |> Json.Decode.decodeString Error.decode of
@@ -210,11 +216,11 @@ expectJsonOrError toMsg decoder =
 
 expectBytesOrError : (Bytes -> Msg) -> Http.Expect Msg
 expectBytesOrError toMsg =
-    handle Ok (Error.ServerError |> Error.Application |> always)
+    handle (always Ok) (Error.ServerError |> Error.Application |> always)
         |> Http.expectBytesResponse (toMsgHandlingErrors toMsg)
 
 
-handle : (body -> Result Error value) -> (body -> Error) -> Http.Response body -> Result Error value
+handle : (Int -> body -> Result Error value) -> (body -> Error) -> Http.Response body -> Result Error value
 handle onGoodStatus onBadStatus response =
     case response of
         Http.BadUrl_ url ->
@@ -233,8 +239,8 @@ handle onGoodStatus onBadStatus response =
             else
                 onBadStatus body |> Err
 
-        Http.GoodStatus_ _ body ->
-            onGoodStatus body
+        Http.GoodStatus_ { statusCode } body ->
+            onGoodStatus statusCode body
 
 
 toMsgHandlingErrors : (value -> Msg) -> Result Error value -> Msg

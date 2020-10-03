@@ -34,12 +34,17 @@ things or time of others, and be patient where people can't find time.
 
 ### Advice for making good pull requests
 
+ - Don't be afraid to create work-in-progress pull requests to get feedback from others if you are not sure on the best 
+   way to solve a problem or get stuck.
  - Comment on an existing issue or make a new one for what you plan on doing, so others know you are working on it.
  - Please make sure you run the current version of prettier installed in the project on any files you change to 
    ensure they have the project code style. The easiest way to do this is to set it up with your editor to run 
    automatically, see above.
- - Don't be afraid to create work-in-progress pull requests to get feedback from others if you are not sure on the best 
-   way to solve a problem or get stuck.
  - If you are installing additional dependencies, please try to keep them minimal (e.g: don't install giant frameworks 
    for one or two small features) and check they don't have vulnerabilities and are trustworthy projects.
+ - Try to keep a clean commit history. Make commits reasonably-sized, self-contained changes that are well described by 
+   their commit messages. Git has powerful tools for editing your commit history, so don't feel constrained by this 
+   while developing, but remember you can go back with amend commits and interactive rebases to clean it up later. 
+   If there are changes while you are working, please rebase on the new head rather than merging. If you are unsure 
+   about any of this (git can be intimidating), feel free to just commit up a PR as-is and ask for help.
 

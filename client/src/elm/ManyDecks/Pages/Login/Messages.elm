@@ -13,5 +13,5 @@ type Msg
     | GoogleAuthResult String
     | TryGuestSignIn Guest.Method
     | TryTwitchSignIn Twitch.Method
-    | SetAuth Auth
+    | SetAuth Bool Auth
     | SignOut

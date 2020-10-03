@@ -36,19 +36,27 @@ update msg model =
             ( model, Ports.tryGoogleAuth method.id )
 
         GoogleAuthResult code ->
-            ( model, Api.signIn (Google.authPayload code) (SetAuth >> Global.LoginMsg) )
+            ( model, Api.signIn (Google.authPayload code) (\isNewAccount auth -> SetAuth isNewAccount auth |> Global.LoginMsg) )
 
         TryGuestSignIn _ ->
-            ( model, Api.signIn Guest.authPayload (SetAuth >> Global.LoginMsg) )
+            ( model, Api.signIn Guest.authPayload (\isNewAccount auth -> SetAuth isNewAccount auth |> Global.LoginMsg) )
 
         TryTwitchSignIn method ->
             ( model, method |> Twitch.requestUrl model.origin |> Navigation.load )
 
-        SetAuth auth ->
+        SetAuth isNewAccount auth ->
+            let
+                page =
+                    if isNewAccount then
+                        Profile
+
+                    else
+                        auth.id |> Decks.List |> Decks
+            in
             ( { model | auth = Just auth, usernameField = auth.name }
             , Cmd.batch
                 [ auth |> Just |> Auth.store
-                , Route.redirectTo model.navKey (auth.id |> Decks.List |> Decks)
+                , Route.redirectTo model.navKey page
                 ]
             )
 
