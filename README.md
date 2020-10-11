@@ -1,9 +1,9 @@
 # [Many Decks][hosted]
 
 [![Current Release Version](https://img.shields.io/github/v/tag/Lattyware/manydecks?label=release&sort=semver)](https://github.com/Lattyware/manydecks/releases)
-[![Client Docker Build](https://img.shields.io/docker/cloud/build/massivedecks/manydecks-client?label=client%20docker%20build)][docker-client]
-[![Server Docker Build](https://img.shields.io/docker/cloud/build/massivedecks/manydecks-server?label=server%20docker%20build)][docker-server]
+[![Build Status](https://img.shields.io/github/workflow/status/Lattyware/manydecks/Build)](https://github.com/Lattyware/manydecks/actions)
 [![License](https://img.shields.io/github/license/Lattyware/manydecks)](LICENSE)
+[![Follow on Twitter for Status & Updates](https://img.shields.io/twitter/follow/Massive_Decks?label=Status%20%26%20Updates&style=social)](https://twitter.com/Massive_Decks)
 
 Many Decks is a free, open source deck source that can be used to host decks for [Massive Decks][md], a comedy party game based on 
 Cards against Humanity.
