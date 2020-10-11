@@ -7,13 +7,8 @@ import { default as JsonPatch } from "fast-json-patch";
 import * as Errors from "./errors";
 import * as uuid from "uuid";
 import * as User from "./user";
+import * as UserName from "./user/name";
 import * as Code from "./deck/code";
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  colors,
-  animals,
-} from "unique-names-generator";
 
 export interface CreatedOrFoundUser {
   result: "Created" | "Found";
@@ -81,12 +76,6 @@ export class Store {
       return result.rows.map((row) => row.code);
     });
 
-  generateUsername(): string {
-    return uniqueNamesGenerator({
-      dictionaries: [adjectives, colors, animals],
-    });
-  }
-
   public findOrCreateGoogleUser: (
     googleId: string,
     googleName?: string
@@ -102,7 +91,7 @@ export class Store {
       } else {
         const newId = User.id();
         const newName =
-          googleName === undefined ? this.generateUsername() : googleName;
+          googleName === undefined ? UserName.random() : googleName;
         await client.query(
           `INSERT INTO manydecks.users (id, name, google_id) VALUES ($1, $2, $3);`,
           [newId, newName, googleId]
@@ -126,7 +115,7 @@ export class Store {
       } else {
         const newId = User.id();
         const newName =
-          twitchName === undefined ? this.generateUsername() : twitchName;
+          twitchName === undefined ? UserName.random() : twitchName;
         await client.query(
           `INSERT INTO manydecks.users (id, name, twitch_id) VALUES ($1, $2, $3);`,
           [newId, newName, twitchId]
@@ -145,7 +134,7 @@ export class Store {
         return { result: "Found", user: { id: user.id, name: user.name } };
       } else {
         const newId = User.id();
-        const newName = this.generateUsername();
+        const newName = UserName.random();
         await client.query(
           `INSERT INTO manydecks.users (id, name, is_guest) VALUES ($1, $2, True);`,
           [newId, newName]

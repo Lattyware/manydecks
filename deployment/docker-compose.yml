@@ -8,7 +8,6 @@ volumes:
 
 services:
   storage:
-    container_name: postgres
     image: "postgres:13"
     environment:
       - POSTGRES_USER=manydecks
@@ -20,9 +19,10 @@ services:
     restart: unless-stopped
 
   server:
-    container_name: server
     image: "massivedecks/manydecks-server:latest"
-    #build: "./server"
+    build: "../server"
+    volumes:
+      - ./config.json5:/md/config.json5
     depends_on:
       - storage
     environment:
@@ -32,16 +32,14 @@ services:
     restart: unless-stopped
 
   client:
-    container_name: client
     image: "massivedecks/manydecks-client:latest"
-    #build: "./client"
+    build: "../client"
     depends_on:
       - server
     ports:
-      - "80:8080"
-      - "443:8083"
+      - "8082:8082"
     networks:
       - internal
-    volumes:
-      - /home/ubuntu/nginx.conf:/etc/nginx/nginx.conf:ro
+    #volumes:
+    #  - /path/to/custom/nginx.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
