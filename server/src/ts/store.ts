@@ -322,7 +322,7 @@ export class Store {
         result = await client.query(
           `
             SELECT id, name, author_id, author, language, calls, responses, public, version, ts_rank_cd(deck_search , query) AS rank
-            FROM manydecks.summaries, to_tsquery($4) query 
+            FROM manydecks.summaries, plainto_tsquery($4) query 
             WHERE summaries.public  AND ($3::text IS NULL OR summaries.language = $3::text)
             AND query @@ summaries.deck_search 
             ORDER BY rank DESC 

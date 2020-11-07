@@ -1,4 +1,4 @@
-FROM node:14.12.0-alpine
+FROM node:15-alpine
 
 WORKDIR /md
 
@@ -10,7 +10,7 @@ COPY ["./types", "./types"]
 COPY ["./tsconfig.json", "./"]
 RUN ["npm", "run", "build"]
 
-FROM node:14.12.0-alpine
+FROM node:15.0-alpine
 LABEL maintainer="team@rereadgames.com"
 
 ARG BUILD_DATE

@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   server:
-    image: "massivedecks/manydecks-server:latest"
+    image: "ghcr.io/lattyware/manydecks/server:latest"
     build: "../server"
     volumes:
       - ./config.json5:/md/config.json5
@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   client:
-    image: "massivedecks/manydecks-client:latest"
+    image: "ghcr.io/lattyware/manydecks/client:latest"
     build: "../client"
     depends_on:
       - server

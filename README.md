@@ -27,11 +27,11 @@ Many Decks is open source software available under [the AGPLv3 license](LICENSE)
 
 To use, [the hosted version][hosted] is easiest.
 
-If you wish to deploy your own version, the easiest way is to use the docker images, which can be found on Docker Hub:
-[Client][docker-client]/[Server][docker-server].
+If you wish to deploy your own version, the easiest way is to use the docker images: 
+[the client image][client-image], and [the server image][server-image].
 
-[docker-client]: https://hub.docker.com/r/massivedecks/manydecks-client
-[docker-server]: https://hub.docker.com/r/massivedecks/manydecks-server
+[client-image]: https://github.com/users/Lattyware/packages/container/package/manydecks%2Fclient
+[server-image]: https://github.com/users/Lattyware/packages/container/package/manydecks%2Fserver
 
 ## APIs
 
