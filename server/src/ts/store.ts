@@ -363,12 +363,15 @@ export class Store {
       } catch (error) {
         throw new Errors.BadPatch();
       }
-      await client.query(
+      const result = await client.query(
         `
-        UPDATE manydecks.decks SET deck = $1 WHERE id = $2;
+        UPDATE manydecks.decks SET deck = $1 WHERE id = $2 AND author = $3;
       `,
-        [updated, id]
+        [updated, id, user]
       );
+      if (result.rowCount === 0) {
+        throw new Errors.DeckNotFound();
+      }
       return deck;
     });
 

@@ -22,7 +22,6 @@ import ManyDecks.Pages.Decks.Browse as Browse
 import ManyDecks.Pages.Decks.Edit as Edit
 import ManyDecks.Pages.Decks.List as List
 import ManyDecks.Pages.Decks.Messages exposing (Msg(..))
-import ManyDecks.Pages.Decks.Model exposing (CodeAndSummary)
 import ManyDecks.Pages.Decks.Route as Route exposing (Route(..))
 import ManyDecks.Pages.Decks.View as View
 import ManyDecks.Ports as Ports
@@ -84,7 +83,11 @@ update msg model =
                         ( edit, editCmd ) =
                             d |> Edit.init
                     in
-                    ( { model | edit = edit |> Just }, Cmd.batch [ changeRouteIfNeeded, editCmd ] )
+                    if Just d.author.id == (model.auth |> Maybe.map .id) then
+                        ( { model | edit = edit |> Just }, Cmd.batch [ changeRouteIfNeeded, editCmd ] )
+
+                    else
+                        ( model, GlobalRoute.redirectTo model.navKey (Route.Decks (Route.View code)) )
 
                 Nothing ->
                     ( model, GlobalRoute.redirectTo model.navKey (Route.Decks (Route.Edit code)) )

@@ -5,8 +5,8 @@ module ManyDecks.Language exposing
 
 
 type alias Described =
-    { code : String
-    , description : String
+    { code : String -- The full language code.
+    , description : String -- A description of the language.
     }
 
 

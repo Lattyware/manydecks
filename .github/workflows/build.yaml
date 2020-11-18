@@ -79,7 +79,7 @@ jobs:
         uses: lattyware/push-docker-image-to-version-tags@v2
         with:
           source: "${{ matrix.component }}:${{ env.COMMIT_VERSION }}"
-          image: "${{ matrix.registry.image-prefix }}${{ matrix.COMPONENT }}"
+          image: "${{ matrix.registry.image-prefix }}${{ matrix.component }}"
           hash: "${{ env.COMMIT_VERSION }}"
           version: "${{ env.GIT_TAG_NAME }}"
           server: "${{ matrix.registry.server }}"
