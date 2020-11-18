@@ -73,3 +73,12 @@ export class NotAuthenticated extends ManyDecksError {
     super("User needs to be authenticated for that.");
   }
 }
+
+export class Forbidden extends ManyDecksError {
+  public readonly type = "Forbidden";
+  public readonly status = HttpStatus.FORBIDDEN;
+
+  public constructor() {
+    super("User does not have permission to do that.");
+  }
+}

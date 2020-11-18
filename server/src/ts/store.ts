@@ -341,6 +341,9 @@ export class Store {
   ) => Promise<Deck.Deck> = async (id, user, patch) =>
     await this.withClient(async (client) => {
       const deck = await this.getDeck(id);
+      if (deck.author.id !== user) {
+        throw new Errors.Forbidden();
+      }
       try {
         JsonPatch.applyPatch(deck, patch);
       } catch (error) {
@@ -370,7 +373,7 @@ export class Store {
         [updated, id, user]
       );
       if (result.rowCount === 0) {
-        throw new Errors.DeckNotFound();
+        throw new Errors.Forbidden();
       }
       return deck;
     });
