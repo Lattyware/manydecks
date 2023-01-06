@@ -19,7 +19,7 @@
   "dependencies": {
     "elm-material": "file:elm-material",
     "fuse.js": "^6.4.3",
-    "json5": "^2.1.3",
+    "json5": "^2.2.2",
     "language-subtag-registry": "^0.3.21",
     "subtag": "^0.5.0"
   },
